@@ -18,6 +18,8 @@ def get_transforms(crop_size, resize, additional_targets, rotate=False, need=('t
     transformations = {}
     if rotate:
         rotate_p = 1
+    else:
+        rotate_p = 0
     if 'train' in need:
         transformations['train'] = A.Compose([
             A.Resize(resize, resize),
