@@ -276,6 +276,14 @@ class BaseModel(pl.LightningModule):
                               batch_norm={'batch': True, 'none': False}[self.hparams.norm],  # only bn or none
                               final=self.hparams.final, mc=self.hparams.mc)
 
+        elif self.hparams.netG .startswith('res'):
+            print('resnet generator: ' + self.hparams.netG)
+            Generator = getattr(getattr(__import__('networks.resnet.' + self.hparams.netG), 'resnet'),
+                                self.hparams.netG).Generator
+            net_g = Generator(input_nc=self.hparams.input_nc,
+                                    output_nc=self.hparams.output_nc, ngf=self.hparams.ngf,
+                                    n_blocks=4, img_size=self.hparams.cropsize, light=True)
+
         elif self.hparams.netG == 'ugatit':
             from networks.ugatit.networks import ResnetGenerator
             print('use ugatit generator')
