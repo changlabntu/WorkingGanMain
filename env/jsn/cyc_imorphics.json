@@ -30,7 +30,7 @@
             "cmb": "not",
             "batch_size": 1,
             "test_batch_size": 1,
-            "n_epochs": 201,
+            "n_epochs": 101,
             "lr": 0.0002,
             "beta1": 0.5,
             "threads": 4,

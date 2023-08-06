@@ -2,6 +2,12 @@ from models.base import BaseModel, combine
 import copy
 import torch
 
+def temperal_diff(x):
+    diff_x = []
+    for i in range(x.shape[0]-1):
+        diff_x.append(x[i+1]-x[i])
+    diff_x = torch.stack(diff_x, dim=0)
+    return diff_x
 
 class GAN(BaseModel):
     """
@@ -68,6 +74,10 @@ class GAN(BaseModel):
 
         loss_g_l1 = self.add_loss_l1(a=self.imgYX[:, :, :, :, ::8], b=self.ori[:, :, :, :, :]) * self.hparams.lamb
 
+        # temperal loss
+        loss_t = self.add_loss_l1(a=(self.imgYX.permute(4, 1, 2, 3, 0)[1:, :, :, :, 0]),
+                                  b=temperal_diff(self.oriX)) * self.hparams.lamb
+
         # Cyclic(XYX, X)
         #if self.hparams.lamb > 0:
         #    loss_g += self.add_loss_l1(a=self.imgXYX, b=self.oriX) * self.hparams.lamb
@@ -80,9 +90,9 @@ class GAN(BaseModel):
             # Identity(idt_Y, Y)
         #    loss_g += self.add_loss_l1(a=self.idt_Y, b=self.oriY) * self.hparams.lambI
 
-        loss_g = loss_g_gan + loss_g_l1
+        loss_g = loss_g_gan + loss_g_l1 + loss_t
 
-        return {'sum': loss_g, 'loss_g_gan': loss_g_gan, 'loss_g_l1': loss_g_l1}
+        return {'sum': loss_g, 'loss_g_gan': loss_g_gan, 'loss_g_l1': loss_g_l1, 'loss_t': loss_t}
 
     def backward_d(self):
         loss_d = 0

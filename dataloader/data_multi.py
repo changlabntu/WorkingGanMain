@@ -123,6 +123,8 @@ class PairedSlices(data.Dataset):
         else:
             self.cropsize = self.opt.cropsize
 
+        self.rotate = self.opt.rotate
+
         # if no transform than transform = get_transforms
         if transforms is None:
             additional_targets = dict()
@@ -130,6 +132,7 @@ class PairedSlices(data.Dataset):
                 additional_targets[str(i).zfill(4)] = 'image'
             self.transforms = get_transforms(crop_size=self.cropsize,
                                              resize=self.resize,
+                                             rotate=self.rotate,
                                              additional_targets=additional_targets)[mode]
         else:
             self.transforms = transforms

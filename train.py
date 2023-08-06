@@ -52,6 +52,8 @@ if __name__ == '__main__':
     parser.add_argument('--resize', type=int, help='size for resizing before cropping, 0 for no resizing')
     parser.add_argument('--cropsize', type=int, help='size for xy cropping, 0 for no crop')
     parser.add_argument('--cropz', type=int, help='size for z cropping, 0 for no crop')
+    parser.add_argument('--rotate', action='store_true')
+
     parser.add_argument('--direction', type=str, help='paired: a_b, unpaired a%b ex:(a_b%c_d)')
     parser.add_argument('--nm', type=str, help='way to normalize itensity value')
     parser.add_argument('--gray', action='store_true', dest='gray', default=False, help='dont copy img to 3 channel')
@@ -122,7 +124,7 @@ if __name__ == '__main__':
 
     train_set = Dataset(root=os.environ.get('DATASET') + args.dataset + folder,
                         path=args.direction,
-                        opt=args, mode='train', index=train_index, filenames=True)
+                        opt=args, mode='train', index=train_index, filenames=True, )
 
     train_loader = DataLoader(dataset=train_set, num_workers=1, batch_size=args.batch_size, shuffle=True,
                               pin_memory=True)
