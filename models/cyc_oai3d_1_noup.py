@@ -40,6 +40,8 @@ class GAN(BaseModel):
     def generation(self, batch):
         self.ori = batch['img'][0]  # (B, C, X, Y, Z)
 
+        self.up = self.upsample(self.ori).permute(4, 1, 2, 3, 0)[::1, :, :, :, 0]
+
         ori = self.ori#self.upsample(self.ori)  # (B, C, X, Y, Z)
         #print(ori.shape)
         xy = ori.permute(4, 1, 2, 3, 0)[::1, :, :, :, 0]  # (Z, C, X, Y)
@@ -76,7 +78,7 @@ class GAN(BaseModel):
 
         # temperal loss
         loss_t = self.add_loss_l1(a=(self.imgYX.permute(4, 1, 2, 3, 0)[1:, :, :, :, 0]),
-                                  b=temperal_diff(self.oriX)) * self.hparams.lamb
+                                  b=temperal_diff(self.up)) * self.hparams.lamb
 
         # Cyclic(XYX, X)
         #if self.hparams.lamb > 0:

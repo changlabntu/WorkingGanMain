@@ -100,7 +100,6 @@ class PairedSlices(data.Dataset):
 
         # get name of images if exist in the all the paired folders
         image_list = [sorted([x.split('/')[-1] for x in glob.glob(self.all_path[i] + '/*')]) for i in range(len(self.all_path))]
-        print()
         self.images = list(reduce(set.intersection, [set(item) for item in image_list]))
 
         print('LL ' + str(len(self.images)))
@@ -170,6 +169,10 @@ class PairedSlices(data.Dataset):
         except:
             x = Image.open(path)
         x = np.array(x).astype(np.float32)
+
+        if self.opt.rgb:
+            if len(x.shape) == 2:
+                x = np.stack((x, x, x), axis=2)
 
         # thresholding and normalization
         if self.opt.trd > 0:

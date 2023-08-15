@@ -88,7 +88,7 @@ class GAN(BaseModel):
         self.classifier = nn.Conv2d(256, 2, 1, stride=1, padding=0).cuda()
 
         # update names of the models for optimization
-        self.netg_names = {'net_g': 'net_g', 'net_gY': 'net_gY'}
+        self.netg_names = {'net_g': 'net_g', 'net_gY': 'net_gY'} # I forget to add netF for this one
         self.netd_names = {'net_d': 'net_d', 'classifier': 'classifier'}
 
         self.oai = OaiSubjects(self.hparams.dataset)
@@ -202,7 +202,7 @@ class GAN(BaseModel):
 
             total_nce_loss = 0.0
             for f_q, f_k, crit, f_w in zip(feat_q_pool, feat_k_pool, self.criterionNCE, self.hparams.fWhich):
-                loss = crit(f_q, f_k) * self.hparams.lbNCE * f_w
+                loss = crit(f_q, f_k) * f_w
                 total_nce_loss += loss.mean()
             loss_nce = total_nce_loss / 4
         else:

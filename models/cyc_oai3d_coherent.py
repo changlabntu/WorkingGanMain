@@ -83,7 +83,7 @@ class GAN(BaseModel):
         loss_g_l1 = self.add_loss_l1(a=self.imgYX[:, :, :, :, ::8], b=self.ori[:, :, :, :, :]) * self.hparams.lamb
 
         # temperal loss
-        loss_t = self.add_loss_l1(a=(self.imgYX.permute(4, 1, 2, 3, 0)[1:, :, :, :, 0]),
+        loss_t = self.add_loss_l1(a=(self.imgYX.permute(4, 1, 2, 3, 0)[:, :, :, :, 0]),
                                   b=temperal_diff(self.oriX)) * self.hparams.lamb
 
         # Cyclic(XYX, X)

@@ -182,7 +182,7 @@ class Generator(nn.Module):
 
         xu3 = self.up3(x3)
         #alpha
-        x2 = alpha * x2 + (1 - alpha) * xu3
+        x2 = alpha * x2 + (1 - alpha) * xu3  # alpha means the features from the encoder are connecting, or it is replaced by the features from the decoder
         xu3_ = xu3#.detach()
         cat3 = torch.cat([xu3_, x2], 1)
         x5 = self.conv5(cat3)   # Dropout

@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--direction', type=str, help='paired: a_b, unpaired a%b ex:(a_b%c_d)')
     parser.add_argument('--nm', type=str, help='way to normalize itensity value')
-    parser.add_argument('--gray', action='store_true', dest='gray', default=False, help='dont copy img to 3 channel')
+    parser.add_argument('--rgb', action='store_true', dest='rgb', default=False, help='copy img to 3 channel')
     parser.add_argument('--spd', action='store_true', dest='spd', default=False, help='USE SPADE?')
     # Model
     parser.add_argument('--gan_mode', type=str, help='gan mode')

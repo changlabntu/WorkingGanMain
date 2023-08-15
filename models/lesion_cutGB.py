@@ -57,8 +57,7 @@ class PatchSampleF(nn.Module):
                     # torch.randperm produces cudaErrorIllegalAddress for newer versions of PyTorch. https://github.com/taesungp/contrastive-unpaired-translation/issues/83
                     # patch_id = torch.randperm(feat_reshape.shape[1], device=feats[0].device)
                     patch_id = np.random.permutation(feat_reshape.shape[1])  # (random order of range(H*W))
-                    patch_id = patch_id[
-                               :int(min(num_patches, patch_id.shape[0]))]  # .to(patch_ids.device) # first N patches
+                    patch_id = patch_id[:int(min(num_patches, patch_id.shape[0]))]  # .to(patch_ids.device) # first N patches
                     # patch_id = torch.from_numpy(patch_id).type(torch.long).to(feat.device)
                 patch_id = torch.tensor(patch_id, dtype=torch.long, device=feat.device)
                 x_sample = feat_reshape[:, patch_id, :].flatten(0, 1)  # reshape(-1, x.shape[1])
@@ -99,14 +98,14 @@ class GAN(BaseModel):
             self.VGGloss = VGGLoss().cuda()
 
         # CUT NCE
-        self.featDown = nn.MaxPool2d(kernel_size=self.hparams.fDown)
+        self.featDown = nn.MaxPool2d(kernel_size=self.hparams.fDown)  # extra pooling to increase field of view
 
         netF = PatchSampleF(use_mlp=self.hparams.use_mlp, init_type='normal', init_gain=0.02, gpu_ids=[], nc=256)
         self.netF = init_net(netF, init_type='normal', init_gain=0.02, gpu_ids=[])
         feature_shapes = [32, 64, 128, 256]
         self.netF.create_mlp(feature_shapes)
 
-        if self.hparams.fWhich == None:
+        if self.hparams.fWhich == None:  # which layer of the feature map to be considered in CUT
             self.hparams.fWhich = [1 for i in range(len(feature_shapes))]
 
         print(self.hparams.fWhich)
@@ -164,21 +163,18 @@ class GAN(BaseModel):
         else:
             alpha = 0  # if always disconnected
 
-        # for using dsmc for confirmation
-        #outX = self.net_g(self.oriX, a=1)
-        #self.imgXY = nn.Sigmoid()(outX['out0'])  # mask
-        #self.imgXY = combine(self.imgXY, self.oriX, method='mul')
-
+        # generating a mask by sigmoid to locate the lesions, turn out its the best way for now
         outXz = self.net_g(self.oriX, alpha=1, method='encode')
         outX = self.net_g(outXz, alpha=1, method='decode')
-        self.imgXY = nn.Sigmoid()(outX['out0'])  # mask
-        self.imgXY = combine(self.imgXY, self.oriX, method='mul')
+        self.imgXY = nn.Sigmoid()(outX['out0'])  # mask 0 - 1
+        self.imgXY = combine(self.imgXY, self.oriX, method='mul')  # i am using masking (0-1) here
 
+        #
         outYz = self.net_g(self.oriY, alpha=alpha, method='encode')
         outY = self.net_gY(outYz, alpha=alpha, method='decode')
-        self.imgYY = nn.Tanh()(outY['out0'])  # mask
+        self.imgYY = nn.Tanh()(outY['out0'])  # -1 ~ 1, real img
 
-        # pain label
+        # pain label (its not in used for now)
         self.labels = self.oai.labels_unilateral(filenames=batch['filenames'])
 
     def backward_g(self):
@@ -192,7 +188,7 @@ class GAN(BaseModel):
 
         loss_ga = axy  # * 0.5 + axx * 0.5
 
-        loss_g = loss_ga * self.hparams.adv + loss_l1 * self.hparams.lamb  + loss_l1Y * self.hparams.lamb
+        loss_g = loss_ga * self.hparams.adv + loss_l1 * self.hparams.lamb + loss_l1Y * self.hparams.lamb
 
         if self.hparams.lbvgg > 0:
             loss_gvgg = self.VGGloss(torch.cat([self.imgXY] * 3, 1), torch.cat([self.oriY] * 3, 1))

@@ -404,7 +404,7 @@ class UnetGenerator(nn.Module):
         return {'out0': self.model(input)}
 
 
-class UnetGeneratorAXX(nn.Module):
+class UnetGeneratorA(nn.Module):
     """Create a Unet-based generator"""
 
     def __init__(self, input_nc, output_nc, num_downs, ngf=64, norm_layer=nn.BatchNorm2d, use_dropout=False, final='tanh'):
@@ -443,7 +443,7 @@ class UnetGeneratorAXX(nn.Module):
         xg = self.conv_g(x)
         xk = self.final_layer(xk)
         xg = self.final_layer(xg)
-        return xk, xg
+        return {'out0': xk, 'out1': xg}
 
 
 class UnetSkipConnectionBlock(nn.Module):
