@@ -236,4 +236,5 @@ class GAN(BaseModel):
 
         return {'sum': loss_d, 'da': loss_da}
 
-# CUDA_VISIBLE_DEVICES=0,1,2,3 python train.py --alpha 0 --jsn womac4 --prj 0623/descar8/alpha0_cutC_vgg10_nce1/ --models descar8alpha_cutC --netG edalpha --split a --dataset womac4 --env runpod --lbvgg 10 --lbNCE 1 --nm 11
+
+# python train.py --prj mlp/test/ --models lesion_cutGB --jsn lesion_cut --env t09b --nm 01 --fDown 4 --use_mlp --fWhich 0 0 0 1
