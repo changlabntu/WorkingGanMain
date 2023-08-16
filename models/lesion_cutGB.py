@@ -100,7 +100,7 @@ class GAN(BaseModel):
         # CUT NCE
         self.featDown = nn.MaxPool2d(kernel_size=self.hparams.fDown)  # extra pooling to increase field of view
 
-        netF = PatchSampleF(use_mlp=self.hparams.use_mlp, init_type='normal', init_gain=0.02, gpu_ids=[], nc=256)
+        netF = PatchSampleF(use_mlp=self.hparams.use_mlp, init_type='normal', init_gain=0.02, gpu_ids=[], nc=self.hparams.c_mlp)
         self.netF = init_net(netF, init_type='normal', init_gain=0.02, gpu_ids=[])
         feature_shapes = [x * self.hparams.ngf for x in [1, 2, 4, 8]]
         self.netF.create_mlp(feature_shapes)
@@ -127,6 +127,7 @@ class GAN(BaseModel):
                             help='(used for single image translation) If True, include the negatives from the other samples of the minibatch when computing the contrastive loss. Please see models/patchnce.py for more details.')
         parser.add_argument('--nce_T', type=float, default=0.07, help='temperature for NCE loss')
         parser.add_argument('--use_mlp', action='store_true')
+        parser.add_argument("--c_mlp", dest='c_mlp', type=int, default=256, help='channel of mlp')
         parser.add_argument("--fDown", dest='fDown', type=int, default=1)
         parser.add_argument('--fWhich', nargs='+', help='which layers to have NCE loss', type=int, default=None)
         parser.add_argument("--adv", dest='adv', type=float, default=1)
