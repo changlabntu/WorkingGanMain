@@ -102,7 +102,7 @@ class GAN(BaseModel):
 
         netF = PatchSampleF(use_mlp=self.hparams.use_mlp, init_type='normal', init_gain=0.02, gpu_ids=[], nc=256)
         self.netF = init_net(netF, init_type='normal', init_gain=0.02, gpu_ids=[])
-        feature_shapes = [32, 64, 128, 256]
+        feature_shapes = [x * self.hparams.ngf for x in [1, 2, 4, 8]]
         self.netF.create_mlp(feature_shapes)
 
         if self.hparams.fWhich == None:  # which layer of the feature map to be considered in CUT

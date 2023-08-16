@@ -272,7 +272,7 @@ class BaseModel(pl.LightningModule):
             Generator = getattr(getattr(__import__('networks.EncoderDecoder.' + self.hparams.netG), 'EncoderDecoder'),
                                 self.hparams.netG).Generator
             # descargan only has options for batchnorm or none
-            net_g = Generator(n_channels=self.hparams.input_nc, out_channels=self.hparams.output_nc,
+            net_g = Generator(n_channels=self.hparams.input_nc, out_channels=self.hparams.output_nc, nf=self.hparams.ngf,
                               batch_norm={'batch': True, 'none': False}[self.hparams.norm],  # only bn or none
                               final=self.hparams.final, mc=self.hparams.mc)
 

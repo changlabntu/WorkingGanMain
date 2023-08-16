@@ -50,6 +50,9 @@ def get_model(option='new'):
         model = torch.load(
             '/media/ExtHDD01/logs/womac4/mlp/alpha0_cutGB2_vgg0_nce4_0001/checkpoints/net_g_model_epoch_120.pth',
             map_location=torch.device('cpu')).cuda()
+        #model = torch.load(
+        #    '/media/ExtHDD01/logs/womac4/mlp/patch512/checkpoints/net_g_model_epoch_200.pth',
+        #    map_location=torch.device('cpu')).cuda()
 
     elif option == 'old':
         model = torch.load('/media/ExtHDD01/logs/womac4/3D/test4fixmcVgg10/checkpoints/net_g_model_epoch_40.pth',
@@ -161,7 +164,7 @@ e[:, 1] = (e[:, 1] - e[:, 1].min()) / (e[:, 1].max() - e[:, 1].min())
 pain = np.concatenate([np.ones((f0.shape[1])), 2 * np.ones((f1.shape[1]))])
 P = 1
 
-for condition in [0, 1, 2]:
+for condition in [0, 1, 2, 3]:
     le = (lesion >= 0) / 1
     plt.scatter(e[le == 1, 0], e[le == 1, 1], s=0.05 * np.ones(((le == 1).sum(), 1))[:, 0])
     for trd in [4, 6, 8]:
@@ -171,11 +174,21 @@ for condition in [0, 1, 2]:
             le = (lesion >= trd) & (eff == 1) & (pain == P)
         if condition == 2:
             le = (lesion >= trd) & (eff == 0) & (seg == 0) & (pain == P)
+        if condition == 3:
+            le = (lesion >= trd)
 
         plt.scatter(e[le == 1, 0], e[le == 1, 1], s=2 * np.ones(((le == 1).sum(), 1))[:, 0])
     plt.xlim(0, 1)
     plt.ylim(0, 1)
     plt.show()
+
+le = (lesion >= 0) & (pain != P)
+
+plt.scatter(e[le == 1, 0], e[le == 1, 1], s=2 * np.ones(((le == 1).sum(), 1))[:, 0])
+plt.xlim(0, 1)
+plt.ylim(0, 1)
+plt.show()
+
 
 label = -10 * np.ones((e.shape[0]))
 
