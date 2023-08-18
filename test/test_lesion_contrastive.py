@@ -10,11 +10,30 @@ import umap
 reducer = umap.UMAP()
 from os import path
 import sys
+from collections import OrderedDict
 
 #sys.path.append(path.abspath('../WorkingGan'))
 import torch.nn as nn
 from sklearn.neighbors import KNeighborsClassifier
 
+def convert_linear_to_conv2d(model):
+    # convert Linear to Conv2d
+    new_model = []
+    for name, module in model.named_modules():
+        if isinstance(module, nn.Linear):
+            in_features = module.in_features
+            out_features = module.out_features
+            bias = module.bias
+            new_layer = nn.Conv2d(in_channels=in_features, out_channels=out_features, kernel_size=1, stride=1,
+                                  padding=0, bias=True)
+            new_layer.weight.data = module.weight.data.view(out_features, in_features, 1, 1)
+            if bias is not None:
+                new_layer.bias.data = bias.data
+            new_model.append((name, new_layer))
+        elif isinstance(module, nn.ReLU):
+            new_model.append((name, module))
+    new_model = nn.Sequential(OrderedDict(new_model))
+    return new_model
 
 def get_tiff_stack(x):
     x = x / x.max()
@@ -36,28 +55,39 @@ def get_images_and_seg(list_img):
 
 
 def get_seg(x):
-    # get segmentation, but apply maxpooling (8 * ratio) to match the size of the feature map
+    # get segmentation, but apply maxpooling (8 * fDown) to match the size of the feature map
     x = torch.from_numpy(x)
-    x = nn.MaxPool2d(8 * ratio)(x / 1)
+    x = nn.MaxPool2d(8 * fDown)(x / 1)
     x = x.permute(1, 2, 0).reshape(-1)
     return x
 
 
-def get_model(option='new'):
+def get_model(prj_name, epoch, option='new'):
     if option == 'new':
         #model = torch.load('/media/ExtHDD01/logs/womac4/0719/alpha0_cutGB_vgg10_nce1/checkpoints/net_g_model_epoch_120.pth',
         #                   map_location=torch.device('cpu')).cuda()
+
         model = torch.load(
-            '/media/ExtHDD01/logs/womac4/mlp/alpha0_cutGB2_vgg0_nce4_0001/checkpoints/net_g_model_epoch_120.pth',
+            '/media/ExtHDD01/logs/womac4/' + prj_name + '/checkpoints/net_g_model_epoch_' + str(epoch) + '.pth',
             map_location=torch.device('cpu')).cuda()
         #model = torch.load(
-        #    '/media/ExtHDD01/logs/womac4/mlp/patch512/checkpoints/net_g_model_epoch_200.pth',
+        #    '/media/ExtHDD01/logs/womac4/mlpb2/ngf16fD2fW0011b4/checkpoints/net_g_model_epoch_100.pth',
         #    map_location=torch.device('cpu')).cuda()
 
     elif option == 'old':
         model = torch.load('/media/ExtHDD01/logs/womac4/3D/test4fixmcVgg10/checkpoints/net_g_model_epoch_40.pth',
                            map_location=torch.device('cpu')).cuda(); nomask = False; nm11 = False;
-    return model
+
+    try:
+        netF = torch.load('/media/ExtHDD01/logs/womac4/' + prj_name +
+                          '/checkpoints/netF_model_epoch_' + str(epoch) + '.pth', map_location=torch.device('cpu')).cuda()
+        l2norm = netF.l2norm
+        netF = [convert_linear_to_conv2d(x) for x in [netF.mlp_0, netF.mlp_1, netF.mlp_2, netF.mlp_3]]
+    except:
+        netF = None
+        l2norm = None
+
+    return model, netF, l2norm
 
 
 def pain_significance_monte_carlo(x0, x1, model, skip=1, nomask=False):
@@ -92,11 +122,16 @@ def pain_significance_monte_carlo(x0, x1, model, skip=1, nomask=False):
 # Prepare data and model
 ###
 # get the model
-model = get_model()
+prj_name = 'mlp/alpha0_cutGB2_vgg0_nce4_0001'
+#prj_name = 'mlpb2/ngf24fD2fW0001b4/'
+#prj_name = 'mlp/ngf32fD2fW0001b4/'
+model, netF, l2norm = get_model(prj_name)
+
+print([type(x) for x in [model, netF, l2norm]])
 
 nomask = False
 nm11 = False
-ratio = 1  # the
+fDown = 2  # the
 skip = 1
 fWhich = [0, 0, 0, 1]  # which layers of features to use
 
@@ -125,11 +160,16 @@ mean, var, sig = pain_significance_monte_carlo(x0, x1, model, skip=skip, nomask=
 f0 = model(x0, method='encode')
 f1 = model(x1, method='encode')
 
-f0 = [nn.MaxPool2d(ratio * j)(i) for (i, j) in zip(f0, [8, 4, 2, 1])]
-f1 = [nn.MaxPool2d(ratio * j)(i) for (i, j) in zip(f1, [8, 4, 2, 1])]
+if netF is not None:
+    f0 = [l2norm(m(f)) for m, f in zip(netF, f0)]
+    f1 = [l2norm(m(f)) for m, f in zip(netF, f1)]
 
-#f0 = f0[-1:]
-#f1 = f1[-1:]
+
+f0 = [nn.MaxPool2d(fDown * j)(i) for (i, j) in zip(f0, [8, 4, 2, 1])]
+f1 = [nn.MaxPool2d(fDown * j)(i) for (i, j) in zip(f1, [8, 4, 2, 1])]
+
+f0 = f0[-1:]
+f1 = f1[-1:]
 
 f0 = torch.cat(f0, 1)
 f1 = torch.cat(f1, 1)
@@ -142,7 +182,7 @@ f1 = f1.permute(1, 2, 3, 0).reshape(C, -1).cpu().detach().numpy()
 # e0 = tsne.fit_transform(data.T)
 
 # lesion
-lesion = nn.MaxPool2d(8 * ratio)(sig)
+lesion = nn.MaxPool2d(8 * fDown)(sig)
 lesion = lesion.permute(1, 2, 0).reshape(-1)
 
 # double everything
@@ -164,26 +204,34 @@ e[:, 1] = (e[:, 1] - e[:, 1].min()) / (e[:, 1].max() - e[:, 1].min())
 pain = np.concatenate([np.ones((f0.shape[1])), 2 * np.ones((f1.shape[1]))])
 P = 1
 
-for condition in [0, 1, 2, 3]:
-    le = (lesion >= 0) / 1
-    plt.scatter(e[le == 1, 0], e[le == 1, 1], s=0.05 * np.ones(((le == 1).sum(), 1))[:, 0])
-    for trd in [4, 6, 8]:
-        if condition == 0:
-            le = (lesion >= trd) & (seg > 0) & (pain == P)
-        if condition == 1:
-            le = (lesion >= trd) & (eff == 1) & (pain == P)
-        if condition == 2:
-            le = (lesion >= trd) & (eff == 0) & (seg == 0) & (pain == P)
-        if condition == 3:
-            le = (lesion >= trd)
 
-        plt.scatter(e[le == 1, 0], e[le == 1, 1], s=2 * np.ones(((le == 1).sum(), 1))[:, 0])
-    plt.xlim(0, 1)
-    plt.ylim(0, 1)
-    plt.show()
+def plot_style_1():
+    for condition in [0, 1, 2]:
+        le = (lesion >= 0) / 1
+        plt.scatter(e[le == 1, 0], e[le == 1, 1], s=0.05 * np.ones(((le == 1).sum(), 1))[:, 0])
+        for trd in [4, 6, 8]:
+            if condition == 0:
+                le = (lesion >= trd) & (seg > 0) & (pain == P)
+            if condition == 1:
+                le = (lesion >= trd) & (eff == 1) & (pain == P)
+            if condition == 2:
+                le = (lesion >= trd) & (eff == 0) & (seg == 0) & (pain == P)
+            if condition == 3:
+                le = (lesion >= trd)
 
-le = (lesion >= 0) & (pain != P)
+            plt.scatter(e[le == 1, 0], e[le == 1, 1], s=2 * np.ones(((le == 1).sum(), 1))[:, 0])
+        plt.xlim(0, 1)
+        plt.ylim(0, 1)
+        plt.show()
 
+trd = 6
+le = (lesion >= 0) / 1
+plt.scatter(e[le == 1, 0], e[le == 1, 1], s=0.05 * np.ones(((le == 1).sum(), 1))[:, 0])
+le = (lesion >= trd) & (seg > 0) & (pain == P)
+plt.scatter(e[le == 1, 0], e[le == 1, 1], s=2 * np.ones(((le == 1).sum(), 1))[:, 0])
+le = (lesion >= trd) & (eff == 1) & (pain == P)
+plt.scatter(e[le == 1, 0], e[le == 1, 1], s=2 * np.ones(((le == 1).sum(), 1))[:, 0])
+le = (lesion >= trd) & (eff == 0) & (seg == 0) & (pain == P)
 plt.scatter(e[le == 1, 0], e[le == 1, 1], s=2 * np.ones(((le == 1).sum(), 1))[:, 0])
 plt.xlim(0, 1)
 plt.ylim(0, 1)
@@ -203,17 +251,17 @@ label[(pain == 2)] = 0
 # knn
 knn = KNeighborsClassifier(n_neighbors=10)
 knn.fit(e[label >= 0, :], label[label >= 0])
-
 fout = knn.predict(e)
-fout[label >= 0] = label[label >= 0]
 
+# plot for no pain
+fout[label >= 0] = label[label >= 0]
 plt.scatter(e[fout == 0, 0], e[fout == 0, 1], s=0.05 * np.ones(((fout == 0).sum(), 1))[:, 0])
 plt.scatter(e[fout == 1, 0], e[fout == 1, 1], s=2 * np.ones(((fout == 1).sum(), 1))[:, 0])
 plt.show()
 
 # resize back to pixel space
 fout = fout[:fout.shape[0] // 2]
-fout = fout.reshape((48 // ratio, 48 // ratio, len(list_img)))
+fout = fout.reshape((48 // fDown, 48 // fDown, len(list_img)))
 fout = torch.from_numpy(fout).permute(2, 0, 1).unsqueeze(1)
 
 for folder_name in ['fmap', 'ori', 'sig', 'mean', 'eff', 'seg']:
@@ -228,7 +276,7 @@ for i in range(len(list_img)):
     tiff.imwrite('output/sig/' + name[i], sig[i, :, :].cpu().numpy())
     tiff.imwrite('output/mean/' + name[i], mean[i, :, :].cpu().numpy())
 
-fout = nn.Upsample(scale_factor=8 * ratio, mode='bilinear')(fout)
+fout = nn.Upsample(scale_factor=8 * fDown, mode='bilinear')(fout)
 fout[fout <= 0] = 0
 
 # sig = torch.from_numpy(tiff.imread('sigold.tif'))

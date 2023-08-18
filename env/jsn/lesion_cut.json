@@ -55,7 +55,7 @@
     "nce_includes_all_negatives_from_minibatch": false,
     "nce_T": 0.07,
     "use_mlp": true,
-    "fDown": 4,
+    "fDown": 1,
     "fWhich": [
       0,
       0,

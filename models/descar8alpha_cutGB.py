@@ -201,7 +201,7 @@ class GAN(BaseModel):
         if self.hparams.lbNCE > 0:
             # (Y, YY) (XY, YY) (Y, XY)
             feat_q = self.net_g(self.oriY, method='encode')
-            feat_k = self.net_g(self.imgXY, method='encode')
+            feat_k = self.net_g(self.imgYY, method='encode')
 
             feat_q = [self.featDown(f) for f in feat_q]
             feat_k = [self.featDown(f) for f in feat_k]
