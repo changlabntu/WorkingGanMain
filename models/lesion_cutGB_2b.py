@@ -201,26 +201,39 @@ class GAN(BaseModel):
         if self.hparams.lbNCE > 0:
             # (Y, YY) (XY, YY) (Y, XY)
             feat_q = self.net_g(self.oriY, method='encode')
-            feat_k = self.net_g(self.imgYY, method='encode')
+            feat_k = self.net_g(self.imgXY, method='encode')
 
             feat_q = [self.featDown(f) for f in feat_q]
             feat_k = [self.featDown(f) for f in feat_k]
 
-            feat_k_pool, sample_ids = self.netF(feat_k, self.hparams.num_patches,
-                                                None)  # get source patches by random id
-            feat_q_pool, _ = self.netF(feat_q, self.hparams.num_patches, sample_ids)  # use the ids for query target
+            N = feat_q[0].shape[0] // 2
 
-            total_nce_loss = 0.0
-            for f_q, f_k, crit, f_w in zip(feat_q_pool, feat_k_pool, self.criterionNCE, self.hparams.fWhich):
-                loss = crit(f_q, f_k) * f_w
-                total_nce_loss += loss.mean()
-            loss_nce = total_nce_loss / 4
+            feat_q0 = [f[:N] for f in feat_q]
+            feat_q1 = [f[N:] for f in feat_q]
+            feat_k0 = [f[:N] for f in feat_k]
+            feat_k1 = [f[N:] for f in feat_k]
+
+            loss_nce = 0
+            loss_nce += self.cut_sample(feat_q0, feat_k0)
+            loss_nce += self.cut_sample(feat_q1, feat_k1)
+            loss_nce += self.cut_sample(feat_q0, feat_q1)
         else:
             loss_nce = 0
 
         loss_g += loss_nce * self.hparams.lbNCE
 
         return {'sum': loss_g, 'l1': loss_l1, 'ga': loss_ga, 'gvgg': loss_gvgg, 'loss_nce': loss_nce}
+
+    def cut_sample(self, feat_q, feat_k):
+        feat_k_pool, sample_ids = self.netF(feat_k, self.hparams.num_patches,
+                                            None)  # get source patches by random id
+        feat_q_pool, _ = self.netF(feat_q, self.hparams.num_patches, sample_ids)  # use the ids for query target
+
+        total_nce_loss = 0.0
+        for f_q, f_k, crit, f_w in zip(feat_q_pool, feat_k_pool, self.criterionNCE, self.hparams.fWhich):
+            loss = crit(f_q, f_k) * f_w
+            total_nce_loss += loss.mean()
+        return total_nce_loss
 
     def backward_d(self):
         # ADV(XY)-

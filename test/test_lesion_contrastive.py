@@ -122,18 +122,20 @@ def pain_significance_monte_carlo(x0, x1, model, skip=1, nomask=False):
 # Prepare data and model
 ###
 # get the model
-prj_name = 'mlp/alpha0_cutGB2_vgg0_nce4_0001'
-#prj_name = 'mlpb2/ngf24fD2fW0001b4/'
-#prj_name = 'mlp/ngf32fD2fW0001b4/'
-model, netF, l2norm = get_model(prj_name)
+#prj_name = 'mlp/test0/'
+#prj_name = 'mlp/alpha0_cutGB2_vgg0_nce4_0001/'
+prj_name = 'mlpb2/ngf24fD2fW0001b4/'
+#prj_name = 'mlp/cutGB2_nce1_1111_ngf16_patch512/'
+
+model, netF, l2norm = get_model(prj_name, epoch=120)
 
 print([type(x) for x in [model, netF, l2norm]])
 
 nomask = False
 nm11 = False
-fDown = 2  # the
+fDown = 1  # the
 skip = 1
-fWhich = [0, 0, 0, 1]  # which layers of features to use
+fWhich = [1, 1, 1, 1]  # which layers of features to use
 
 root = '/media/ExtHDD01/Dataset/paired_images/womac4/full/'
 # list of images
