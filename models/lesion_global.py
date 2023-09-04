@@ -84,13 +84,16 @@ class GAN(BaseModel):
         # Initialize the networks
         self.hparams.final = 'none'
         self.net_g, self.net_d = self.set_networks()
-        self.hparams.final = 'none'
-        self.net_gY, _ = self.set_networks()
-        self.classifier = nn.Conv2d(256, 2, 1, stride=1, padding=0).cuda()
+        #self.hparams.final = 'none'
+        #self.net_gY, _ = self.set_networks()
+        #self.classifier = nn.Conv2d(256, 2, 1, stride=1, padding=0).cuda()
+
+        self.pool = nn.AdaptiveMaxPool3d(output_size=(1, 1, 1))
+        self.triple = nn.TripletMarginLoss()
 
         # update names of the models for optimization
-        self.netg_names = {'net_g': 'net_g', 'net_gY': 'net_gY', 'netF': 'netF'}
-        self.netd_names = {'net_d': 'net_d', 'classifier': 'classifier'}
+        self.netg_names = {'net_g': 'net_g'}
+        self.netd_names = {'net_d': 'net_d'}
 
         self.oai = OaiSubjects(self.hparams.dataset)
 
@@ -166,63 +169,39 @@ class GAN(BaseModel):
 
         # generating a mask by sigmoid to locate the lesions, turn out its the best way for now
         outXz = self.net_g(self.oriX, alpha=1, method='encode')
-        outX = self.net_g(outXz, alpha=1, method='decode')
-        self.imgXY = nn.Sigmoid()(outX['out0'])  # mask 0 - 1
-        self.imgXY = combine(self.imgXY, self.oriX, method='mul')  # i am using masking (0-1) here
+
+        self.outXz = outXz[-1]
+        (B, C, X, Y) = self.outXz.shape
+        self.outXz = self.outXz.view(B//2, 2, C, X, Y)
+        self.outXz = self.outXz.permute(1, 2, 3, 4, 0)
+        self.outXz = self.pool(self.outXz)
+        self.outX0 = self.outXz[:1, ::]
+        self.outX1 = self.outXz[1:, ::]
+
+        #outX = self.net_g(outXz, alpha=1, method='decode')
+        #self.imgXY = nn.Sigmoid()(outX['out0'])  # mask 0 - 1
+        #self.imgXY = combine(self.imgXY, self.oriX, method='mul')  # i am using masking (0-1) here
 
         #
         outYz = self.net_g(self.oriY, alpha=alpha, method='encode')
-        outY = self.net_gY(outYz, alpha=alpha, method='decode')
-        self.imgYY = nn.Tanh()(outY['out0'])  # -1 ~ 1, real img
+        self.outYz = outYz[-1]
+        self.outYz = self.outYz.view(B//2, 2, C, X, Y)
+        self.outYz = self.outYz.permute(1, 2, 3, 4, 0)
+        self.outYz = self.pool(self.outYz)
+        self.outY0 = self.outYz[:1, ::]
+        self.outY1 = self.outYz[1:, ::]
+        #outY = self.net_gY(outYz, alpha=alpha, method='decode')
+        #self.imgYY = nn.Sigmoid()(outY['out0'])  # -1 ~ 1, real img
 
         # pain label (its not in used for now)
-        self.labels = self.oai.labels_unilateral(filenames=batch['filenames'])
+        #self.labels = self.oai.labels_unilateral(filenames=batch['filenames'])
 
     def backward_g(self):
         # ADV(XY)+
-        axy = self.add_loss_adv(a=self.imgXY, net_d=self.net_d, truth=True)
-
-        # L1(XY, Y)
-        loss_l1 = self.add_loss_l1(a=self.imgXY, b=self.oriY)
-
-        loss_l1Y = self.add_loss_l1(a=self.imgYY, b=self.oriY)
-
-        loss_ga = axy  # * 0.5 + axx * 0.5
-
-        loss_g = loss_ga * self.hparams.adv + loss_l1 * self.hparams.lamb + loss_l1Y * self.hparams.lamb
-
-        if self.hparams.lbvgg > 0:
-            loss_gvgg = self.VGGloss(torch.cat([self.imgXY] * 3, 1), torch.cat([self.oriY] * 3, 1))
-            loss_g += loss_gvgg * self.hparams.lbvgg
-        else:
-            loss_gvgg = 0
-
-        # CUT NCE_loss
-        if self.hparams.lbNCE > 0:
-            # (Y, YY) (XY, YY) (Y, XY)
-            feat_q = self.net_g(self.oriY, method='encode')
-            feat_k = self.net_g(self.imgXY, method='encode')
-
-            feat_q = [self.featDown(f) for f in feat_q]
-            feat_k = [self.featDown(f) for f in feat_k]
-
-            N = feat_q[0].shape[0] // 2
-
-            feat_q0 = [f[:N, ::] for f in feat_q]
-            feat_q1 = [f[N:, ::] for f in feat_q]
-            feat_k0 = [f[:N, ::] for f in feat_k]
-            feat_k1 = [f[N:, ::] for f in feat_k]
-
-            loss_nce = 0
-            loss_nce += self.cut_sample(feat_q0, feat_k0)
-            loss_nce += self.cut_sample(feat_q1, feat_k1)
-            loss_nce += self.cut_sample(feat_q0, feat_q1)
-        else:
-            loss_nce = 0
-
-        loss_g += loss_nce * self.hparams.lbNCE
-
-        return {'sum': loss_g, 'l1': loss_l1, 'ga': loss_ga, 'gvgg': loss_gvgg, 'loss_nce': loss_nce}
+        loss_g = 0
+        loss_g += self.triple(self.outY0, self.outY1, self.outX0)
+        loss_g += self.triple(self.outY1, self.outY0, self.outX1)
+        return {'sum': loss_g}
 
     def cut_sample(self, feat_q, feat_k):
         feat_k_pool, sample_ids = self.netF(feat_k, self.hparams.num_patches,
@@ -237,18 +216,20 @@ class GAN(BaseModel):
 
     def backward_d(self):
         # ADV(XY)-
-        axy = self.add_loss_adv(a=self.imgXY.detach(), net_d=self.net_d, truth=False)
+        #axy = self.add_loss_adv(a=self.imgXY.detach(), net_d=self.net_d, truth=False)
 
         # ADV(XX)-
         # axx, _ = self.add_loss_adv_classify3d(a=self.imgXX, net_d=self.net_dX, truth_adv=False, truth_classify=False)
-        ay = self.add_loss_adv(a=self.oriY.detach(), net_d=self.net_d, truth=True)
+        #ay = self.add_loss_adv(a=self.oriY.detach(), net_d=self.net_d, truth=True)
 
         # adversarial of xy (-) and y (+)
-        loss_da = axy * 0.5 + ay * 0.5  # axy * 0.25 + axx * 0.25 + ax * 0.25 + ay * 0.25
+        #loss_da = axy * 0.5 + ay * 0.5  # axy * 0.25 + axx * 0.25 + ax * 0.25 + ay * 0.25
         # classify x (+) vs y (-)
-        loss_d = loss_da * self.hparams.adv
+        #loss_d = loss_da * self.hparams.adv
 
-        return {'sum': loss_d, 'da': loss_da}
+        loss_d = nn.Parameter(torch.zeros(1))
+
+        return {'sum': loss_d}
 
 
-# python train.py --prj mlp/test/ --models lesion_cutGB --jsn lesion_cut --env t09b --nm 01 --fDown 4 --use_mlp --fWhich 0 0 0 1
+# CUDA_VISIBLE_DEVICES=0 python train.py --alpha 0 --jsn womac4 --prj global/0/ --models lesion_global --netG edalphand --split a --dataset womac4 --env t09b --lbvgg 0 --lbNCE 4 --nm 01

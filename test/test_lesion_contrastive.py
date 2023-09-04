@@ -124,8 +124,9 @@ def pain_significance_monte_carlo(x0, x1, model, skip=1, nomask=False):
 # get the model
 #prj_name = 'mlp/test0/'
 #prj_name = 'mlp/alpha0_cutGB2_vgg0_nce4_0001/'
-prj_name = 'mlpb2/ngf24fD2fW0001b4/'
+#prj_name = 'mlpb2/ngf24fD2fW0001b4/'
 #prj_name = 'mlp/cutGB2_nce1_1111_ngf16_patch512/'
+prj_name = 'GB_2b/down2_nce10_0001_ngf32_patch512_crop128/'
 
 model, netF, l2norm = get_model(prj_name, epoch=120)
 
@@ -133,9 +134,9 @@ print([type(x) for x in [model, netF, l2norm]])
 
 nomask = False
 nm11 = False
-fDown = 1  # the
+fDown = 2  # the
 skip = 1
-fWhich = [1, 1, 1, 1]  # which layers of features to use
+fWhich = [0, 0, 0, 1]  # which layers of features to use
 
 root = '/media/ExtHDD01/Dataset/paired_images/womac4/full/'
 # list of images
@@ -144,6 +145,7 @@ la = sorted(glob.glob(root + 'a/*'))
 # list of images to be tested
 list_img = [41, 534, 696, 800, 827, 1180, 1224, 1290, 6910, 9256]
 list_img = [x - 1 for x in list_img]  # -1 because its 1-indexed
+#list_img = list_img + [x + 10 for x in list_img]
 
 # name of the images
 name = [la[y].split('/')[-1] for y in list_img]
@@ -166,18 +168,21 @@ if netF is not None:
     f0 = [l2norm(m(f)) for m, f in zip(netF, f0)]
     f1 = [l2norm(m(f)) for m, f in zip(netF, f1)]
 
+f0 = [x.cpu().detach() for x in f0]
+f1 = [x.cpu().detach() for x in f1]
 
 f0 = [nn.MaxPool2d(fDown * j)(i) for (i, j) in zip(f0, [8, 4, 2, 1])]
 f1 = [nn.MaxPool2d(fDown * j)(i) for (i, j) in zip(f1, [8, 4, 2, 1])]
 
-f0 = f0[-1:]
-f1 = f1[-1:]
-
+# combine all the layers, by fWhich
+f0 = [x for (x, y) in zip(f0, fWhich) if y == 1]
+f1 = [x for (x, y) in zip(f1, fWhich) if y == 1]
 f0 = torch.cat(f0, 1)
 f1 = torch.cat(f1, 1)
+
 C = f0.shape[1]
-f0 = f0.permute(1, 2, 3, 0).reshape(C, -1).cpu().detach().numpy()
-f1 = f1.permute(1, 2, 3, 0).reshape(C, -1).cpu().detach().numpy()
+f0 = f0.permute(1, 2, 3, 0).reshape(C, -1).numpy()
+f1 = f1.permute(1, 2, 3, 0).reshape(C, -1).numpy()
 
 # features
 # data = f0[-1].permute(1, 2, 3, 0).reshape(256, -1).cpu().detach().numpy()
@@ -226,15 +231,17 @@ def plot_style_1():
         plt.ylim(0, 1)
         plt.show()
 
-trd = 6
+
+plt.figure(figsize=(10, 10))
+trd = 4
 le = (lesion >= 0) / 1
-plt.scatter(e[le == 1, 0], e[le == 1, 1], s=0.05 * np.ones(((le == 1).sum(), 1))[:, 0])
+plt.scatter(e[le == 1, 0], e[le == 1, 1], s=1 * np.ones(((le == 1).sum(), 1))[:, 0], alpha=0.2)
 le = (lesion >= trd) & (seg > 0) & (pain == P)
-plt.scatter(e[le == 1, 0], e[le == 1, 1], s=2 * np.ones(((le == 1).sum(), 1))[:, 0])
+plt.scatter(e[le == 1, 0], e[le == 1, 1], s=5 * np.ones(((le == 1).sum(), 1))[:, 0], alpha=0.2)
 le = (lesion >= trd) & (eff == 1) & (pain == P)
-plt.scatter(e[le == 1, 0], e[le == 1, 1], s=2 * np.ones(((le == 1).sum(), 1))[:, 0])
+plt.scatter(e[le == 1, 0], e[le == 1, 1], s=5 * np.ones(((le == 1).sum(), 1))[:, 0], alpha=0.2)
 le = (lesion >= trd) & (eff == 0) & (seg == 0) & (pain == P)
-plt.scatter(e[le == 1, 0], e[le == 1, 1], s=2 * np.ones(((le == 1).sum(), 1))[:, 0])
+plt.scatter(e[le == 1, 0], e[le == 1, 1], s=5 * np.ones(((le == 1).sum(), 1))[:, 0], alpha=0.2)
 plt.xlim(0, 1)
 plt.ylim(0, 1)
 plt.show()
@@ -245,8 +252,8 @@ label = -10 * np.ones((e.shape[0]))
 #label[lesion >= 8] = 1
 # label[lesion < 4] = 0
 
-label[(lesion >= 6) & (seg > 0)] = 1
-label[(lesion >= 6) & (eff > 0)] = 1
+label[(lesion >= 4) & (seg > 0)] = 1
+label[(lesion >= 4) & (eff > 0)] = 1
 # label[lesion < 2] = 0
 label[(pain == 2)] = 0
 

@@ -173,7 +173,7 @@ class GAN(BaseModel):
         #
         outYz = self.net_g(self.oriY, alpha=alpha, method='encode')
         outY = self.net_gY(outYz, alpha=alpha, method='decode')
-        self.imgYY = nn.Tanh()(outY['out0'])  # -1 ~ 1, real img
+        self.imgYY = nn.Sigmoid()(outY['out0'])  # -1 ~ 1, real img
 
         # pain label (its not in used for now)
         self.labels = self.oai.labels_unilateral(filenames=batch['filenames'])
@@ -200,7 +200,7 @@ class GAN(BaseModel):
         # CUT NCE_loss
         if self.hparams.lbNCE > 0:
             # (Y, YY) (XY, YY) (Y, XY)
-            feat_q = self.net_g(self.oriY, method='encode')
+            feat_q = self.net_g(self.imgYY, method='encode')
             feat_k = self.net_g(self.imgXY, method='encode')
 
             feat_q = [self.featDown(f) for f in feat_q]

@@ -214,8 +214,8 @@ class GAN(BaseModel):
             feat_k1 = [f[N:, ::] for f in feat_k]
 
             loss_nce = 0
-            loss_nce += self.cut_sample(feat_q0, feat_k0)
-            loss_nce += self.cut_sample(feat_q1, feat_k1)
+            #loss_nce += self.cut_sample(feat_q0, feat_k0)
+            #loss_nce += self.cut_sample(feat_q1, feat_k1)
             loss_nce += self.cut_sample(feat_q0, feat_q1)
         else:
             loss_nce = 0

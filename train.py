@@ -127,7 +127,7 @@ if __name__ == '__main__':
                         opt=args, mode='train', index=train_index, filenames=True, )
 
     train_loader = DataLoader(dataset=train_set, num_workers=1, batch_size=args.batch_size, shuffle=True,
-                              pin_memory=True)
+                              pin_memory=True, drop_last=True)
 
     if test_index is not None:
         test_set = Dataset(root=os.environ.get('DATASET') + args.dataset + folder,
