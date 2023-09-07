@@ -60,9 +60,9 @@ def get_feat(x):
 def get_model(option='new'):
     if option == 'new':
         model = torch.load(
-            '/media/ziyi/glory/logs_pin/womac4/0823_triploss_nomc_4/checkpoints/net_g_model_epoch_100.pth',
+            '/media/ziyi/glory/logs_pin/womac4/0821_triploss/checkpoints/net_g_model_epoch_100.pth',
             map_location=torch.device('cpu')).cuda()
-        model.eval()
+        # model.eval()
 
     return model
 
@@ -74,7 +74,7 @@ def get_model(option='new'):
 model = get_model()
 
 nomask = False
-nm11 = True
+nm11 = False
 ratio = 1  # the
 skip = 1
 fWhich = [0, 0, 0, 1]  # which layers of features to use
@@ -86,7 +86,7 @@ la = sorted(glob.glob(root + 'a/*'))
 # list of images to be tested
 import random
 random.seed(21)
-list_img = random.sample(range(0, 667*23), 50)
+list_img = random.sample(range(0, 667*23), 40)
 
 # load images and segmentations
 x0, x1, seg0, eff0, seg1, eff1 = get_images_and_seg(list_img)
@@ -99,18 +99,9 @@ ori = get_tiff_stack(np.stack([tiff.imread(x) for x in ori_path], 0))
 dif = get_tiff_stack(np.stack([tiff.imread(x) for x in dif_path], 0))
 eff = get_tiff_stack(np.stack([tiff.imread(x) for x in eff_path], 0))
 mess = get_tiff_stack(np.stack([tiff.imread(x) for x in mess_path], 0))
+all = torch.cat([x0, x1, ori, dif, eff, mess], 0)
 
-# collect features
-f0 = get_feat(x0)
-f1 = get_feat(x1)
-f2 = get_feat(ori)
-f3 = get_feat(dif)
-f4 = get_feat(eff)
-f5 = get_feat(mess)
-
-# features
-data = np.concatenate([f0, f1, f2, f3, f4, f5], 1)
-
+data = get_feat(all)
 import time
 tini = time.time()
 e = reducer.fit_transform(data.T)   # umap (20, 2)

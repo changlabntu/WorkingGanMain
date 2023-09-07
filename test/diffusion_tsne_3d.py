@@ -59,14 +59,14 @@ def get_feat(x):
     f = featDown(f)
     f = f.view(f.shape[0] // 23, f.shape[1], 23)
     f = max_pool(f).squeeze(2).cpu().detach().numpy()
-    # f = f.flatten().unsqueeze(1).cpu().detach().numpy()
+    # f0 = f0.flatten().unsqueeze(1).cpu().detach().numpy()
     return f
 
 def get_model(prj):
     model = torch.load(
-        f'/media/ziyi/glory/logs_pin/womac4/{prj}/checkpoints/net_g_model_epoch_60.pth',
+        f'/media/ziyi/glory/logs_pin/womac4/{prj}/checkpoints/net_g_model_epoch_40.pth',
         map_location=torch.device('cpu')).cuda()
-    # model.eval()
+    model.eval()
     return model
 
 def get_dist(x1, x2, label_ls=None, label=None):
@@ -95,8 +95,9 @@ def get_dist_center(x, labels_ls=None, label=None):
 ###
 nomask = False
 nm11 = False
-# prj = '0830_maxpool_mcbn'
 prj = '0906_xbm_max_256'
+# prj = '0825_triploss_flat4_nobn'
+print(prj)
 root = '/media/ziyi/glory/OAIDataBase/womac4/full/'
 # get the model
 model = get_model(prj = prj)
@@ -105,8 +106,8 @@ la = sorted(glob.glob(root + 'a/*'))
 
 # list of images to be tested
 import random
-# random.seed(21)
-list_img = random.sample(range(0, 667*23), 200)
+random.seed(21)
+list_img = random.sample(range(0, 667*23), 50)
 # name of the images
 # filenames = [la[y] for y in list_img]
 name = [la[y].split('/')[-1] for y in list_img]
@@ -133,6 +134,7 @@ super = torch.cat(super_diff, 0)
 normal = torch.cat(normal_diff, 0)
 no = torch.cat(no_diff, 0)
 all = torch.cat([base, super, normal, no], 0)
+print(len(all))
 
 all_f = []
 for i in range(all.shape[0]): #run by subject
@@ -140,13 +142,13 @@ for i in range(all.shape[0]): #run by subject
     f = get_feat(x)
     all_f.append(f)
 
-# data = np.concatenate(all_f, 1).reshape(256*23,-1)
 data = np.concatenate(all_f, 0)
 print(data.shape)
 
 import time
 tini = time.time()
-e = reducer.fit_transform(data)   # umap (20, 2)
+# e = reducer.fit_transform(data.T)   # umap (20, 2)
+e = TSNE(n_components=2, init='random', random_state=5, verbose=1).fit_transform(data)
 print(e.shape)
 print('umap time used: ' + str(time.time() - tini))
 e[:, 0] = (e[:, 0] - e[:, 0].min()) / (e[:, 0].max() - e[:, 0].min())
@@ -168,19 +170,25 @@ labels_no[-3:] = 3
 # calculate center
 print('distance to unpain center:')
 center_nopain = np.mean(e[sub:2*sub, :], axis=0)
-base_cn = np.mean(get_dist_center(e[:sub, :]))
+# pain_dist = get_dist_center(e[:sub, :])
+pain_dist = [np.linalg.norm(e[j:j+1, :] - e[sub+j:sub+j+1, :]) for j in range(sub)]
+# print('pain:', pain_dist)
+# print('pain score:', labels['paindiff'])
+womac_x = [abs(int(x*10)) for x in labels['paindiff']]
+womac_y = [round(x, 2) for x in pain_dist]
+coef = np.polyfit(womac_x, womac_y,1)
+print(coef)
+poly1d_fn = np.poly1d(coef)
+plt.plot(womac_x, womac_y, 'yo', womac_x, poly1d_fn(womac_x), '--k')
+# plt.show()
+plt.savefig(f'./output/umap/lesion/{prj}_womac_pair.png')
+plt.close()
 super_cn = get_dist_center(e[2*sub:2*sub+32, :], labels_super, [0,3])
-super_mess_cn = get_dist_center(e[2*sub:2*sub+32, :], labels_super, [0,1])
-super_eff_cn = get_dist_center(e[2*sub:2*sub+32, :], labels_super, [0,2])
 normal_cn = get_dist_center(e[2*sub+32:2*sub+64, :], labels_super, [0,3])
-normal_mess_cn = get_dist_center(e[2*sub+32:2*sub+64, :], labels_super, [0,1])
-normal_eff_cn = get_dist_center(e[2*sub+32:2*sub+64, :], labels_super, [0,2])
 no_cn = get_dist_center(e[-12:, :], labels_no, [0,3])
-# print('super:', super_cn)
-# print('normal:', normal_cn)
-# print('no:', no_cn)
-# print('normal_mess:', normal_mess_cn)
-# print('normal_eff:', normal_eff_cn)
+print('super:', super_cn)
+print('normal:', normal_cn)
+print('no:', no_cn)
 
 # caculate the distance
 base_dist_value, base_dist_xy = get_dist(e[:sub, :], e[sub:2*sub, :])
@@ -188,8 +196,6 @@ super_dist_value, super_dist_xy = get_dist(e[2*sub:2*sub+32, :], e[2*sub:2*sub+3
 super_mess_dist_value, super_mess_dist_xy = get_dist(e[2*sub:2*sub+32, :], e[2*sub:2*sub+32, :], labels_super, 1)
 super_eff_dist_value, super_eff_dist_xy = get_dist(e[2*sub:2*sub+32, :], e[2*sub:2*sub+32, :], labels_super, 2)
 normal_dist_value, normal_dist_xy = get_dist(e[2*sub+32:2*sub+64, :], e[2*sub+32:2*sub+64, :], labels_super, 3)
-normal_mess_dist_value, normal_mess_dist_xy = get_dist(e[2*sub+32:2*sub+64, :], e[2*sub+32:2*sub+64, :], labels_super, 1)
-normal_eff_dist_value, normal_eff_dist_xy = get_dist(e[2*sub+32:2*sub+64, :], e[2*sub+32:2*sub+64, :], labels_super, 2)
 no_dist_value, no_dist_xy = get_dist(e[-12:, :], e[-12:, :], labels_no, 3)
 print('distance from pain to unpain:')
 print('base:', base_dist_value, base_dist_xy)
@@ -200,7 +206,7 @@ print('normal:', normal_dist_value, normal_dist_xy)
 print('no:', no_dist_value, no_dist_xy)
 
 # plot base
-plt.scatter(e[:2*sub, 0], e[:2*sub, 1], c=labels_base, cmap='RdYlBu', alpha=0.5, marker="o", s=10)
+plt.scatter(e[:2*sub, 0], e[:2*sub, 1], c=labels_base, cmap='RdYlBu', alpha=0.5, marker="o")
 # plot super
 plt.scatter(e[2*sub:2*sub+32, 0], e[2*sub:2*sub+32, 1], c=labels_super, cmap='Spectral', marker="^")
 # plot normal
@@ -214,14 +220,10 @@ plt.figtext(0.2, 0.9, 'Red pain - Blue nopain - Green eff - Yellow mess')
 plt.figtext(0.2, 0.03, 'Base: circle, Super: triangle, Normal: square')
 # plt.show()
 os.makedirs('./output/umap/lesion', exist_ok=True)
-plt.savefig(f'./output/umap/lesion/{prj}.png')
+plt.savefig(f'./output/umap/lesion/{prj}_tsne.png')
 
-d = {'name': ['base', 'super', 'super_mess', 'super_eff', 'normal', 'normal_mess', 'normal_eff', 'nopain'],
-     'moving_dist': [base_dist_value, super_dist_value, super_mess_dist_value, super_eff_dist_value,
-                     normal_dist_value, normal_mess_dist_value, normal_eff_dist_value, no_dist_value],
-     # 'dist_xy': [base_dist_xy, super_dist_xy, super_mess_dist_xy, super_eff_dist_xy, normal_dist_xy],
-     'dist_to_unpain_center(origin/after)':[base_cn, super_cn, super_mess_cn, super_eff_cn,
-                                            normal_cn, normal_mess_cn, normal_eff_cn, no_cn]}
+d = {'name': ['base', 'super', 'super_mess', 'super_eff', 'normal'],
+     'dist_value': [base_dist_value, super_dist_value, super_mess_dist_value, super_eff_dist_value, normal_dist_value],
+     'dist_xy': [base_dist_xy, super_dist_xy, super_mess_dist_xy, super_eff_dist_xy, normal_dist_xy]}
 df = pd.DataFrame(data=d)
-df = df.round(2)
-df.to_csv(f'./output/umap/lesion/{prj}.csv', index=False)
+# df.to_csv(f'./output/umap/lesion/{prj}.csv', index=False)

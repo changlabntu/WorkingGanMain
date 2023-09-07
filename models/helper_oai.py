@@ -8,16 +8,22 @@ class OaiSubjects():
         self.df = pd.read_csv('env/csv/' + dataset + '.csv')
         self.df['ID'] = [str(x) for x in self.df['ID']]
 
-    def labels_unilateral(self, filenames):
+    def labels_unilateral(self, filenames, mode='train'):
         df = self.df
         #ids = [x.split('/')[-1].split('_')[0] for x in filenames[0]]
-        ids = [x.split('/')[-1].replace('_' + x.split('/')[-1].split('_')[-1], '') for x in filenames[0]]
+        if mode == 'train':
+            ids = [x.split('/')[-1].replace('_' + x.split('/')[-1].split('_')[-1], '') for x in filenames[0]]
+        else:
+            ids = filenames
+
+        painL = [df.loc[df['ID'] == i, ['V$$WOMKPL']].values[0][0] for i in ids]
+        painR = [df.loc[df['ID'] == i, ['V$$WOMKPR']].values[0][0] for i in ids]
 
         paindiff = [(df.loc[df['ID'] == i, ['V$$WOMKPR']].values[0][0] \
                      - df.loc[df['ID'] == i, ['V$$WOMKPL']].values[0][0]) for i in ids] # Right - Left
         paindiff = torch.FloatTensor([x / 10 for x in paindiff])
 
-        labels = {'paindiff': paindiff,  'painbinary': (torch.sign(paindiff) + 1) / 2}
+        labels = {'pinaR':painR, 'painL': painL, 'paindiff': paindiff,  'painbinary': (torch.sign(paindiff) + 1) / 2}
         return labels
 
 
