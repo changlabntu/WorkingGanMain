@@ -41,7 +41,7 @@ def customize_data_split(args):
             if dataset == 'womac4':
                 if split == 'a':
                     train_index = range(667, 2225)
-                    test_index = range(0, 667)
+                    test_index = range(333, 667)
             if dataset == 'oaiseg':
                 if split == 'a':
                     if args.load3d:

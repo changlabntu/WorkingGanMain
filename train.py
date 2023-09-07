@@ -5,14 +5,11 @@ from torch.utils.data import DataLoader
 import os, shutil, time, sys
 from tqdm import tqdm
 from dotenv import load_dotenv
-
 from utils.make_config import load_json, save_json
 import json
 import pytorch_lightning as pl
 from pytorch_lightning import loggers as pl_loggers
 from dataloader.data_multi import MultiData as Dataset
-
-import os
 
 os.environ['OPENBLAS_NUM_THREADS'] = '1'
 
@@ -124,10 +121,10 @@ if __name__ == '__main__':
 
     train_set = Dataset(root=os.environ.get('DATASET') + args.dataset + folder,
                         path=args.direction,
-                        opt=args, mode='train', index=train_index, filenames=True, )
+                        opt=args, mode='train', index=train_index, filenames=True)
 
     train_loader = DataLoader(dataset=train_set, num_workers=1, batch_size=args.batch_size, shuffle=True,
-                              pin_memory=True)
+                              pin_memory=True, drop_last=True)
 
     if test_index is not None:
         test_set = Dataset(root=os.environ.get('DATASET') + args.dataset + folder,
@@ -150,16 +147,8 @@ if __name__ == '__main__':
         print('Preloading time: ' + str(time.time() - tini))
 
     # Logger
-    if 0:
-        from pytorch_lightning.loggers.neptune import NeptuneLogger
-
-        logger = NeptuneLogger(
-            api_key="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiIyNmQ4NzVkMi00YWZkLTQ4MTctOGE5ZC02N2U4ZGU1YWVkZjYifQ==",
-            project="OaiGanRel")
-        # api_key="ANONYMOUS",
-        # project="test_neptune")
-    else:
-        logger = pl_loggers.TensorBoardLogger(os.environ.get('LOGS') + args.dataset + '/', name=args.prj)
+    os.makedirs(os.path.join(os.environ.get('LOGS'), args.dataset, args.prj, 'logs'), exist_ok=True)
+    logger = pl_loggers.TensorBoardLogger(os.path.join(os.environ.get('LOGS'), args.dataset, args.prj, 'logs'))
 
     # Trainer
     checkpoints = os.path.join(os.environ.get('LOGS'), args.dataset, args.prj, 'checkpoints')
@@ -168,10 +157,10 @@ if __name__ == '__main__':
     trainer = pl.Trainer(gpus=-1, strategy='ddp_spawn',
                          max_epochs=args.n_epochs + 1,  # progress_bar_refresh_rate=20,
                          logger=logger,
-                         enable_checkpointing=False, log_every_n_steps=200,
+                         enable_checkpointing=True, log_every_n_steps=100,
                          check_val_every_n_epoch=1)
     print(args)
-    trainer.fit(net, train_loader, test_loader)  # test loader not used during training
+    trainer.fit(net, train_loader, test_loader)
 
-    # Examples of  Usage XXXYYYZZ
-    # CUDA_VISIBLE_DEVICES=0,1,2,3 python train.py --jsn womac3 --prj 3D/descar3/GdsmcDbpatch16  --models descar3 --netG dsmc --netD bpatch_16 --direction ap_bp --final none -b 1 --split moaks --final none --n_epochs 400
+    # Examples of  Usage
+    # CUDA_VISIBLE_DEVICES=3 python train.py --prj test --models lesion_cutGB_xbm --jsn intersubject --lbX 1 --cropsize 256 -b 1 --xbm --start_iter 0 --xbm_size 1000

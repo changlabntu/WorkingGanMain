@@ -1,6 +1,6 @@
 {
   "train": {
-    "env": "runpod",
+    "env": "t09",
     "prj": "test/",
     "models": "lesion_cutGB",
     "dataset": "womac4",

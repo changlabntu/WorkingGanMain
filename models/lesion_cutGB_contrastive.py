@@ -142,7 +142,7 @@ class GAN(BaseModel):
     def validation_step(self, batch, batch_idx):  # 定義Validation如何進行，以這邊為例就再加上了計算Acc.
         self.generation(batch)
         loss_g = self.backward_g()
-        loss = loss_g['loss_xbm']
+        loss = loss_g['loss_contrastive']
         self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
 
         return {'val_loss': loss}
