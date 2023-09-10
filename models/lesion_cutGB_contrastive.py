@@ -13,6 +13,7 @@ import pandas as pd
 import numpy as np
 from models.helper_oai import OaiSubjects, classify_easy_3d, swap_by_labels
 from models.helper import reshape_3d, tile_like
+from utils.contrastive_loss import triplet_loss, SupConLoss, InstanceLoss, HistogramLoss
 from networks.networks_cut import Normalize, init_net, PatchNCELoss
 
 
@@ -101,9 +102,9 @@ class GAN(BaseModel):
         # CUT NCE
         self.featDown = nn.MaxPool2d(kernel_size=self.hparams.fDown)  # extra pooling to increase field of view
 
-        netF = PatchSampleF(use_mlp=self.hparams.use_mlp, init_type='normal', init_gain=0.02, gpu_ids=[], nc=self.hparams.c_mlp)
+        netF = PatchSampleF(use_mlp=self.hparams.use_mlp, init_type='normal', init_gain=0.02, gpu_ids=[], nc=256)
         self.netF = init_net(netF, init_type='normal', init_gain=0.02, gpu_ids=[])
-        feature_shapes = [x * self.hparams.ngf for x in [1, 2, 4, 8]]
+        feature_shapes = [32, 64, 128, 256]
         self.netF.create_mlp(feature_shapes)
 
         if self.hparams.fWhich == None:  # which layer of the feature map to be considered in CUT
@@ -123,12 +124,13 @@ class GAN(BaseModel):
         parser = parent_parser.add_argument_group("LitModel")
         parser.add_argument('--num_patches', type=int, default=256, help='number of patches per layer')
         parser.add_argument('--lbNCE', type=float, default=1.0, help='weight for NCE loss: NCE(G(X), X)')
+        parser.add_argument('--lbT', type=float, default=0, help='weight for Triplet loss')
+        parser.add_argument('--lbS', type=float, default=0, help='weight for SupCon loss')
         parser.add_argument('--nce_includes_all_negatives_from_minibatch',
                             type=bool, nargs='?', const=True, default=False,
                             help='(used for single image translation) If True, include the negatives from the other samples of the minibatch when computing the contrastive loss. Please see models/patchnce.py for more details.')
         parser.add_argument('--nce_T', type=float, default=0.07, help='temperature for NCE loss')
         parser.add_argument('--use_mlp', action='store_true')
-        parser.add_argument("--c_mlp", dest='c_mlp', type=int, default=256, help='channel of mlp')
         parser.add_argument("--fDown", dest='fDown', type=int, default=1)
         parser.add_argument('--fWhich', nargs='+', help='which layers to have NCE loss', type=int, default=None)
         parser.add_argument("--adv", dest='adv', type=float, default=1)
@@ -137,18 +139,19 @@ class GAN(BaseModel):
                             help='ending epoch for decaying skip connection, 0 for no decaying', default=0)
         return parent_parser
 
-    @staticmethod
-    def test_method(net_g, img, hparams, a=None):
-        oriX = img[0]
+    def validation_step(self, batch, batch_idx):  # 定義Validation如何進行，以這邊為例就再加上了計算Acc.
+        self.generation(batch)
+        loss_g = self.backward_g()
+        loss = loss_g['loss_contrast']
+        self.log('val_loss', loss, on_step=False, on_epoch=True, prog_bar=True, logger=True)
 
-        imgXY = net_g(oriX, alpha=0)
-        if not hparams.nomask:
-            imgXY = nn.Sigmoid()(imgXY)  # mask
-            combined = combine(imgXY, oriX, method='mul')
-        else:
-            combined = imgXY
+        return {'val_loss': loss}
 
-        return {'imgXY': imgXY[0, ::].detach().cpu(), 'combinedXY': combined[0, ::].detach().cpu()}
+    def validation_epoch_end(self, outputs):  # 在Validation的一個Epoch結束後，計算平均的Loss及Acc.
+        avg_loss = torch.stack([x['val_loss'] for x in outputs]).mean()
+
+        tensorboard_logs = {'val_loss': avg_loss}
+        return {'avg_val_loss': avg_loss, 'progress_bar': tensorboard_logs}
 
     def generation(self, batch):
         if self.hparams.load3d:  # if working on 3D input, bring the Z dimension to the first and combine with batch
@@ -192,17 +195,11 @@ class GAN(BaseModel):
 
         loss_g = loss_ga * self.hparams.adv + loss_l1 * self.hparams.lamb + loss_l1Y * self.hparams.lamb
 
-        if self.hparams.lbvgg > 0:
-            loss_gvgg = self.VGGloss(torch.cat([self.imgXY] * 3, 1), torch.cat([self.oriY] * 3, 1))
-            loss_g += loss_gvgg * self.hparams.lbvgg
-        else:
-            loss_gvgg = 0
-
         # CUT NCE_loss
         if self.hparams.lbNCE > 0:
             # (Y, YY) (XY, YY) (Y, XY)
             feat_q = self.net_g(self.oriY, method='encode')
-            feat_k = self.net_g(self.imgXY, method='encode')
+            feat_k = self.net_g(self.imgYY, method='encode')
 
             feat_q = [self.featDown(f) for f in feat_q]
             feat_k = [self.featDown(f) for f in feat_k]
@@ -219,9 +216,40 @@ class GAN(BaseModel):
         else:
             loss_nce = 0
 
-        loss_g += loss_nce * self.hparams.lbNCE
+        if self.hparams.lbS > 0:
+            featDown = nn.MaxPool2d(kernel_size=self.hparams.cropsize // 8)
+            max_pool = nn.MaxPool1d(23)
+            crit = SupConLoss()
+            imgs = [self.oriX, self.oriY]
+            feats = [self.net_g(x, method='encode')[-1] for x in imgs]
+            feats = [featDown(f) for f in feats]
+            feats = [f.view(f.shape[0] // 23, f.shape[1], 23) for f in feats]
+            feats = [max_pool(f) for f in feats]
+            feats = torch.cat(feats, 0).squeeze()
+            feats = feats.reshape(feats.shape[0], 1, feats.shape[1])
+            labels = torch.zeros(feats.shape[0]).to(self.device)
+            labels[feats.shape[0]//2:] = 1
+            loss_sup = crit(feats, labels)
+        else:
+            loss_sup = 0
 
-        return {'sum': loss_g, 'l1': loss_l1, 'ga': loss_ga, 'gvgg': loss_gvgg, 'loss_nce': loss_nce}
+        if self.hparams.lbT > 0:
+            total_tri_loss = 0.0
+            # total_tri_loss += triplet_loss(encoder=self.net_g, anchor=self.imgXY[:23],
+            #                                positive=self.oriY[23:], negative=self.oriX[23:])
+            # total_tri_loss += triplet_loss(encoder=self.net_g, anchor=self.imgXY[23:],
+            #                                positive=self.oriY[:23], negative=self.oriX[:23])
+            total_tri_loss += triplet_loss(encoder=self.net_g, anchor=self.oriY[:23],
+                                           positive=self.oriY[23:], negative=self.oriX[:23])
+            total_tri_loss += triplet_loss(encoder=self.net_g, anchor=self.oriY[23:],
+                                            positive=self.oriY[:23], negative=self.oriX[23:])
+            loss_tri = total_tri_loss / 2
+        else:
+            loss_tri = 0
+
+        loss_g += loss_nce * self.hparams.lbNCE + loss_tri * self.hparams.lbT + loss_sup * self.hparams.lbS
+
+        return {'sum': loss_g, 'l1': loss_l1, 'ga': loss_ga, 'loss_nce': loss_nce, 'loss_contrast': loss_tri + loss_sup}
 
     def backward_d(self):
         # ADV(XY)-
