@@ -27,7 +27,8 @@ class GAN(BaseModel):
         self.net_g, self.net_d = self.set_networks()
         self.hparams.final = 'none'
         self.net_gY, _ = self.set_networks()
-        self.classifier = nn.Conv2d(256, 2, 1, stride=1, padding=0).cuda()
+        self.classifier = nn.Linear(self.hparams.projection, 2).cuda()
+        self.criterionBCE = CrossEntropyLoss().cuda()
 
         # update names of the models for optimization
         self.netg_names = {'net_g': 'net_g', 'net_gY': 'net_gY', 'netF': 'netF'}
@@ -196,6 +197,11 @@ class GAN(BaseModel):
 
         loss_dict['loss_t'] = loss_t
         loss_dict['loss_center'] = loss_center
+
+        # classification
+        print(self.outYz.shape)
+        #classify_logits = self.classifier(classify_logits)
+        #classify = self.criterionNCE(classify_logits[:, 1:, :, :], truth_classify.view(-1, 1, 1, 1).type_as(classify_logits))
 
         loss_dict['sum'] = loss_g
 

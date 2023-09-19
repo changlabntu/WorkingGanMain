@@ -94,7 +94,7 @@ def pain_significance_monte_carlo(x0, x1, model, skip=1, nomask=False):
     # pain significance
     outall = []
     print('running monte carlo.....')
-    for mc in range(100):
+    for mc in range(50):
         if nomask:
             try:
                 o = model(x0, alpha=skip)['out0'][:, 0, :, :].detach().cpu()
@@ -122,12 +122,12 @@ def pain_significance_monte_carlo(x0, x1, model, skip=1, nomask=False):
 # Prepare data and model
 ###
 # get the model
-#prj_name = 'mlp/test0/'
+#prj_name = 'mlp/test0/' # good
 #prj_name = 'mlp/alpha0_cutGB2_vgg0_nce4_0001/'
 #prj_name = 'mlpb2/ngf24fD2fW0001b4/'
 #prj_name = 'mlp/cutGB2_nce1_1111_ngf16_patch512/'
 #prj_name = 'GB_2b/down2_nce10_0001_ngf32_patch512_crop128/'
-prj_name = 'global1_cut/nce4_down2_0001_ngf24_proj128/'
+prj_name = 'global1_cut1/nce4_down4_0011_ngf32_proj32_zcrop16/'
 
 model, netF, l2norm = get_model(prj_name, epoch=200)
 
@@ -135,9 +135,9 @@ print([type(x) for x in [model, netF, l2norm]])
 
 nomask = False
 nm11 = False
-fDown = 2  # the
+fDown = 4  # the
 skip = 1
-fWhich = [0, 0, 0, 1]  # which layers of features to use
+fWhich = [0, 0, 1, 1]  # which layers of features to use
 
 root = '/media/ExtHDD01/Dataset/paired_images/womac4/full/'
 # list of images
@@ -233,7 +233,7 @@ def plot_style_1():
         plt.show()
 
 
-plt.figure(figsize=(7, 7))
+#plt.figure(figsize=(7, 7))
 trd = 4
 le = (lesion >= 0) / 1
 plt.scatter(e[le == 1, 0], e[le == 1, 1], s=1 * np.ones(((le == 1).sum(), 1))[:, 0], alpha=0.2)
@@ -241,13 +241,13 @@ le = (lesion >= trd) & (seg > 0) & (pain == P)
 plt.scatter(e[le == 1, 0], e[le == 1, 1], s=10 * np.ones(((le == 1).sum(), 1))[:, 0], alpha=0.2)
 le = (lesion >= trd) & (eff == 1) & (pain == P)
 plt.scatter(e[le == 1, 0], e[le == 1, 1], s=10 * np.ones(((le == 1).sum(), 1))[:, 0], alpha=0.2)
-le = (lesion >= trd) & (eff == 0) & (seg == 0) & (pain == P)
-plt.scatter(e[le == 1, 0], e[le == 1, 1], s=10 * np.ones(((le == 1).sum(), 1))[:, 0], alpha=0.2)
+#le = (lesion >= trd) & (eff == 0) & (seg == 0) & (pain == P)
+#plt.scatter(e[le == 1, 0], e[le == 1, 1], s=10 * np.ones(((le == 1).sum(), 1))[:, 0], alpha=0.2)
 plt.xlim(0, 1)
 plt.ylim(0, 1)
 plt.show()
 
-plt.figure(figsize=(7, 7))
+#plt.figure(figsize=(7, 7))
 trd = 4
 le = (lesion >= 0) / 1
 plt.scatter(e[le == 1, 0], e[le == 1, 1], s=1 * np.ones(((le == 1).sum(), 1))[:, 0], alpha=0.2)

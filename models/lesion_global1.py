@@ -160,6 +160,10 @@ class GAN(BaseModel):
         return parent_parser
 
     def generation(self, batch):
+        z_init = np.random.randint(7)
+        batch['img'][0] = batch['img'][0][:, :, :, :, z_init:z_init + 16]
+        batch['img'][1] = batch['img'][0][:, :, :, :, z_init:z_init + 16]
+
         if self.hparams.load3d:  # if working on 3D input, bring the Z dimension to the first and combine with batch
             batch['img'] = reshape_3d(batch['img'])
 
