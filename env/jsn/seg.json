@@ -6,6 +6,7 @@
             "models": "segmentation",
             "dataset": "oaiseg",
             "load3d": false,
+            "dataset_mode": "PairedSlices",
             "direction": "cartilages_original",
             "flip": false,
             "resize": 384,

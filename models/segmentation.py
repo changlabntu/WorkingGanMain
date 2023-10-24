@@ -28,8 +28,8 @@ class GAN(BaseModel):
         #    #nn.Tanh(),
         #).cuda()
 
-        self.segnet = torch.load('/media/ExtHDD01/logs/Fly0Bseg/seg0/p3/segnet_model_epoch_400.pth')
-        self.segnet.train()
+        #self.segnet = torch.load('/media/ExtHDD01/logs/Fly0Bseg/seg0/p3/segnet_model_epoch_400.pth')
+        #self.segnet.train()
         # update model names
         self.model_names = {'segnet': 'segnet'}
 
@@ -136,3 +136,4 @@ class GAN(BaseModel):
 
 #CUDA_VISIBLE_DEVICES=0 python train.py --jsn seg --prj segmentation --models segmentation --split a
 #CUDA_VISIBLE_DEVICES=0 python train.py --jsn seg --prj seg0 --models segmentation --split a --dataset Fly0Bseg -b 1--direction mask_ori
+#CUDA_VISIBLE_DEVICES=0 python train.py --jsn seg --prj seg1 --models segmentation --split y --dataset Fly0Bseg2 -b 1 --direction ft0_ori

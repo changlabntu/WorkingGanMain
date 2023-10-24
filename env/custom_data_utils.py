@@ -50,6 +50,7 @@ def customize_data_split(args):
                     else:
                         train_index = range(2155, 9924) # 7769
                         test_index = range(0, 2155)
+
     else:
         folder = '/train/'
         train_index = None

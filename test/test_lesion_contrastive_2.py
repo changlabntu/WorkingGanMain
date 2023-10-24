@@ -127,15 +127,15 @@ def pain_significance_monte_carlo(x0, x1, model, skip=1, nomask=False):
 #prj_name = 'mlpb2/ngf24fD2fW0001b4/'
 #prj_name = 'mlp/cutGB2_nce1_1111_ngf16_patch512/'
 #prj_name = 'GB_2b/down2_nce10_0001_ngf32_patch512_crop128/'
-prj_name = 'global1_cut1/nce4_down4_0011_ngf32_proj32_zcrop16/'
+prj_name = 'global1_cut1/nce4_down2_0011_ngf32_proj32_zcrop16/'
+
 
 model, netF, l2norm = get_model(prj_name, epoch=200)
-
 print([type(x) for x in [model, netF, l2norm]])
 
 nomask = False
 nm11 = False
-fDown = 4  # the
+fDown = 2  # the
 skip = 1
 fWhich = [0, 0, 1, 1]  # which layers of features to use
 
@@ -144,7 +144,8 @@ root = '/media/ExtHDD01/Dataset/paired_images/womac4/full/'
 la = sorted(glob.glob(root + 'a/*'))
 
 # list of images to be tested
-list_img = [41, 534, 696, 800, 827, 1180, 1224, 1290, 6910, 9256]
+list_img = [41, 534, 696, 800, 827, 1180, 1224, 1290, 6910, 9256] #+ list(range(8))
+#list_img = list(range(41, 51))
 list_img = [x - 1 for x in list_img]  # -1 because its 1-indexed
 #list_img = list_img + [x + 10 for x in list_img]
 
@@ -289,8 +290,8 @@ for folder_name in ['fmap', 'ori', 'sig', 'mean', 'eff', 'seg']:
 
 x0, x1, seg0, eff0, seg1, eff1 = get_images_and_seg(list_img=list_img)
 for i in range(len(list_img)):
-    tiff.imwrite('output/ori/' + name[i], x0[i, 0, :, :].cpu().numpy())
-    tiff.imwrite('output/seg/' + name[i], seg0[i, :, :])
+    #tiff.imwrite('output/ori/' + name[i], x0[i, 0, :, :].cpu().numpy())
+    #tiff.imwrite('output/seg/' + name[i], seg0[i, :, :])
     tiff.imwrite('output/eff/' + name[i], eff0[i, :, :])
     tiff.imwrite('output/fmap/' + name[i], fout[i, 0, :, :].numpy())
     tiff.imwrite('output/sig/' + name[i], sig[i, :, :].cpu().numpy())

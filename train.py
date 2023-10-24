@@ -110,6 +110,7 @@ if __name__ == '__main__':
 
     # Finalize Arguments and create files for logging
     args.bash = ' '.join(sys.argv)
+    print(args)
     args = prepare_log(args)
 
     print(args)
