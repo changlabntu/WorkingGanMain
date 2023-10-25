@@ -163,10 +163,11 @@ class GAN(BaseModel):
                 loss = crit(f_q, f_k) * f_w
                 total_nce_loss += loss.mean()
             loss_nce = total_nce_loss / 4
+            loss_g += loss_nce
         else:
             loss_nce = 0
 
-        return {'sum': loss_g, 'loss_g': loss_g}
+        return {'sum': loss_g, 'loss_g': loss_g, 'loss_nce': loss_nce}
 
     def backward_d(self):
         loss_d = 0
