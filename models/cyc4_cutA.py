@@ -54,7 +54,6 @@ class GAN(BaseModel):
         parser = parent_parser.add_argument_group("LitModel")
         # CUT NCE
         parser.add_argument('--num_patches', type=int, default=256, help='number of patches per layer')
-        parser.add_argument("--projection", dest='projection', type=int, default=0)
         parser.add_argument('--lbNCE', type=float, default=1.0, help='weight for NCE loss: NCE(G(X), X)')
         parser.add_argument('--nce_includes_all_negatives_from_minibatch',
                             type=bool, nargs='?', const=True, default=False,
@@ -62,7 +61,6 @@ class GAN(BaseModel):
         parser.add_argument('--nce_T', type=float, default=0.07, help='temperature for NCE loss')
         parser.add_argument('--use_mlp', action='store_true')
         parser.add_argument("--c_mlp", dest='c_mlp', type=int, default=256, help='channel of mlp')
-        parser.add_argument("--fDown", dest='fDown', type=int, default=1)
         parser.add_argument('--fWhich', nargs='+', help='which layers to have NCE loss', type=int, default=None)
         # coefficient for the identify loss
         parser.add_argument("--lambI", type=float, default=0.5)
@@ -142,17 +140,8 @@ class GAN(BaseModel):
         # CUT NCE_loss
         if self.hparams.lbNCE > 0:
             # (Y, YY) (XY, YY) (Y, XY)
-            feat_x = self.net_gXY(torch.cat([self.oriXw, self.oriXo], 1), method='encode')
-            feat_xy = self.net_gXY(torch.cat([self.imgXYw, self.imgXYo], 1), method='encode')
-
-            #feat_y = self.net_gYX(self.oriYo, method='encode')
-            #feat_yx = self.net_gXY(self.oriYXo, method='encode')
-
-            feat_q = feat_x
-            feat_k = feat_xy
-
-            feat_q = [self.featDown(f) for f in feat_q]
-            feat_k = [self.featDown(f) for f in feat_k]
+            feat_q = self.net_gXY(torch.cat([self.oriXw, self.oriXo], 1), method='encode')
+            feat_k = self.net_gXY(torch.cat([self.imgXYw, self.imgXYo], 1), method='encode')
 
             feat_k_pool, sample_ids = self.netF(feat_k, self.hparams.num_patches,
                                                 None)  # get source patches by random id

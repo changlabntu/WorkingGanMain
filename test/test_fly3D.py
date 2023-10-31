@@ -240,13 +240,13 @@ if __name__ == '__main__':
         args.env = 't09b'
         args.angle_range = [30, 330]
     elif 1:  # for the original subsampled
-        args.prj = 'cyc4_1024/cut0'
+        args.prj = 'cyc4_1024/cutAnomlp'
         args.direction = 'xyzft0_xyzori'
-        args.destination = '/media/ghc/GHc_data2/N3D/cut0/'
+        args.destination = '/media/ghc/GHc_data2/N3D2/cutA/'
         args.trd = [5, 2000]
-        args.epoch = range(90, 91, 10)
+        args.epoch = range(200, 201, 10)
         args.env = 't09b'
-        args.angle_range = list(range(0, 360, 30))
+        args.angle_range = [90]#list(range(0, 360, 30))
 
     # environment file
     if args.env is not None:
