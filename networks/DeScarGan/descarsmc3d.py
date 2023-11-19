@@ -141,7 +141,7 @@ class Generator(nn.Module):
         return {'out0': x70, 'out1': x71}
 
 if __name__ == '__main__':
-    g = Generator(n_channels=3, batch_norm=False, final='tanh')
+    g = Generator(n_channels=3, nf=64, batch_norm=False, final='tanh')
     #from torchsummary import summary
     from utils.data_utils import print_num_of_parameters
     print_num_of_parameters(g)

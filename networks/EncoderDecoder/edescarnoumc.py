@@ -94,7 +94,7 @@ class Generator(nn.Module):
 
 
 if __name__ == '__main__':
-    g = Generator(n_channels=3, batch_norm=False, final='tanh')
+    g = Generator(n_channels=3, nf=64, batch_norm=False, final='tanh')
     #out = g(torch.rand(1, 3, 256, 256), a=None)
     from utils.data_utils import print_num_of_parameters
     print_num_of_parameters(g)
