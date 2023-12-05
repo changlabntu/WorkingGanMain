@@ -42,6 +42,12 @@ def customize_data_split(args):
                 if split == 'a':
                     train_index = range(667, 2225)
                     test_index = range(333, 667)
+                if split == 'moaks':
+                    df = pd.read_csv('env/csv/womac4_moaks.csv')
+                    df = df.loc[df['V$$WOMKP#'] > 0, :]
+                    df.reset_index(inplace=True)
+                    train_index = list(df.loc[df['READPRJ'].isnull(), :].index)[:]
+                    test_index = list(df.loc[df['READPRJ'].notnull(), :].index)[:]
             if dataset == 'oaiseg':
                 if split == 'a':
                     if args.load3d:

@@ -33,22 +33,22 @@ def resampling(x, scale=None, size=None):
 
 source = '/media/ExtHDD01/Dataset/paired_images/organoidA/'
 
-net = torch.load('/media/ExtHDD01/logs/organoidA/cyc4/checkpoints/netGXY_model_epoch_100.pth', map_location='cpu').cuda()
+net = torch.load('/media/ExtHDD01/logs/organoidA/cyc4/checkpoints/netGXY_model_epoch_80.pth', map_location='cpu').cuda()
 
 o = tiff.imread('/media/ExtHDD01/Dataset/paired_images/organoidA/xyori.tif')
 w = tiff.imread('/media/ExtHDD01/Dataset/paired_images/organoidA/xyft0.tif')
 
-o = o[:, 512:-512, 512:-512]
-w = w[:, 512:-512, 512:-512]
+o = o[100:200, 512:-512, 512:-512]
+w = w[100:200, 512:-512, 512:-512]
 
-o[o >= 1000] = 1000
-w[w >= 0.24] = 0.24
+o[o >= 2000] = 2000
+w[w >= 5] = 5#w[w >= 0.24] = 0.24
 
-o = resampling(o, scale=None, size=(1890, 1024, 1024))
-w = resampling(w, scale=None, size=(1890, 1024, 1024))
+o = resampling(o, scale=None, size=(1200, 1024, 1024))
+w = resampling(w, scale=None, size=(1200, 1024, 1024))
 
-o = o[-1792:, :, :]
-w = w[-1792:, :, :]
+o = o[-o.shape[0] // 256 * 256:, :, :]
+w = w[-w.shape[0] // 256 * 256:, :, :]
 
 o = (o - o.min()) / (o.max() - o.min())
 o = (o - 0.5) / 0.5
@@ -66,8 +66,8 @@ wall = []
 for i in range(o.shape[1]):
     print(i)
     out = net(torch.cat([w[:, i, :].unsqueeze(0).unsqueeze(0), o[:, i, :].unsqueeze(0).unsqueeze(0)], 1).cuda())
-    oout = out['out0'].detach().cpu().numpy()[0, 0, ::]
-    wout = out['out1'].detach().cpu().numpy()[0, 0, ::]
+    oout = out['out1'].detach().cpu().numpy()[0, 0, ::]
+    wout = out['out0'].detach().cpu().numpy()[0, 0, ::]
     oall.append(oout)
     wall.append(wout)
 
@@ -78,5 +78,5 @@ oall = np.stack(oall, 1)
 tiff.imwrite(source + 'wall.tif', wall)
 tiff.imwrite(source + 'oall.tif', oall)
 
-#tiff.imwrite(source + 'oo.tif', o.numpy())
-#tiff.imwrite(source + 'ww.tif', w.numpy())
+tiff.imwrite(source + 'oo.tif', o.numpy())
+tiff.imwrite(source + 'ww.tif', w.numpy())

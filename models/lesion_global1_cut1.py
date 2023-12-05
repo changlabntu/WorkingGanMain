@@ -57,8 +57,8 @@ class GAN(BaseModel):
 
         # global contrastive
         self.batch = self.hparams.batch_size
-        #self.pool = nn.AdaptiveMaxPool3d(output_size=(1, 1, 1))
-        self.pool = nn.AdaptiveAvgPool3d(output_size=(1, 1, 1))
+        self.pool = nn.AdaptiveMaxPool3d(output_size=(1, 1, 1))
+        #self.pool = nn.AdaptiveAvgPool3d(output_size=(1, 1, 1))
         self.triple = nn.TripletMarginLoss()
         if self.hparams.projection > 0:
             self.center = CenterLoss(feat_dim=self.hparams.projection)
@@ -217,4 +217,4 @@ class GAN(BaseModel):
         return {'sum': loss_d, 'da': loss_da}
 
 
-# python train.py --prj mlp/test/ --models lesion_cutGB --jsn lesion_cut --env t09b --nm 01 --fDown 4 --use_mlp --fWhich 0 0 0 1
+# python train.py --alpha 0 --jsn womac4 --prj global1_cut1/nce4_down4_0011_ngf32_proj32_zcrop16/ --models lesion_global1_cut1 --netG edalphand --split moaks --dataset womac4 --lbvgg 0 --lbNCE 4 --nm 01 --fDown 4 --use_mlp --fWhich 0 0 1 1 -b 2 --ngf 32 --projection 32 --env runpod --n_epochs 200 --lr_policy cosine
