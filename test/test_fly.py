@@ -31,21 +31,21 @@ def resampling(x, scale=None, size=None):
     out = up(torch.from_numpy(x).unsqueeze(0).unsqueeze(0))
     return out[0, 0, :, :, :].numpy().astype(dtype)
 
-source = '/media/ExtHDD01/Dataset/paired_images/organoidA/'
+source = '/media/ExtHDD01/Dataset/paired_images/weikunC/'
 
-net = torch.load('/media/ExtHDD01/logs/organoidA/cyc4/checkpoints/netGXY_model_epoch_80.pth', map_location='cpu').cuda()
+net = torch.load('/media/ExtHDD01/logs/weikunC/cyc4_1024/cyc4/checkpoints/netGXY_model_epoch_200.pth', map_location='cpu').cuda()
 
-o = tiff.imread('/media/ExtHDD01/Dataset/paired_images/organoidA/xyori.tif')
-w = tiff.imread('/media/ExtHDD01/Dataset/paired_images/organoidA/xyft0.tif')
+o = tiff.imread('/media/ExtHDD01/Dataset/paired_images/weikunC/xyzoriX2.tif')
+w = tiff.imread('/media/ExtHDD01/Dataset/paired_images/weikunC/xyzft0X2.tif')
 
-o = o[100:200, 512:-512, 512:-512]
-w = w[100:200, 512:-512, 512:-512]
+o = o[100:600, 512:-512, 512:-512]
+w = w[100:600, 512:-512, 512:-512]
 
 o[o >= 2000] = 2000
 w[w >= 5] = 5#w[w >= 0.24] = 0.24
 
-o = resampling(o, scale=None, size=(1200, 1024, 1024))
-w = resampling(w, scale=None, size=(1200, 1024, 1024))
+#o = resampling(o, scale=None, size=(1200, 1024, 1024))
+#w = resampling(w, scale=None, size=(1200, 1024, 1024))
 
 o = o[-o.shape[0] // 256 * 256:, :, :]
 w = w[-w.shape[0] // 256 * 256:, :, :]

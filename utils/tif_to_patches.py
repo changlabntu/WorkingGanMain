@@ -76,19 +76,21 @@ def get_average(source, destination):
 #           destination=root + 'xyzorix6.tif',
 #           size=[50, -1, -1])
 
-root = '/workspace/Data/paired_images/Human/'
+#root = '/workspace/Data/paired_images/weikunC/'
 
-if 1:
-    resampling(source=root + 'xyori.tif',
-               destination=root + 'xyzori.tif',
-               size=[1890, -1, -1])
-
-    resampling(source=root + 'xyft0.tif',
-               destination=root + 'xyzft0.tif',
-               size=[1890, -1, -1])
+root = '/media/ExtHDD01/Dataset/paired_images/weikunC/'
 
 if 0:
-    suffix = ''
+    resampling(source=root + 'xyoriX2.tif',
+               destination=root + 'xyzoriX2.tif',
+               size=[700, -1, -1])
+
+    resampling(source=root + 'xyft0X2.tif',
+               destination=root + 'xyzft0X2.tif',
+               size=[700, -1, -1])
+
+if 1:
+    suffix = 'X2'
 
     main(source=['xyzft0' + suffix, 'xyzori' + suffix],
          destination=['zyft0' + suffix, 'zyori' + suffix],

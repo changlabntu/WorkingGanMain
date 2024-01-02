@@ -23,12 +23,9 @@ class GAN(BaseModel):
         BaseModel.__init__(self, hparams, train_loader, test_loader, checkpoints)
         # First, modify the hyper-parameters if necessary
         # Initialize the networks
-        self.hparams.final = 'none'
         self.net_g, self.net_d = self.set_networks()
-        self.hparams.final = 'none'
         self.net_gY, _ = self.set_networks()
-        self.classifier = nn.Linear(self.hparams.projection, 2).cuda()
-        self.criterionBCE = CrossEntropyLoss().cuda()
+        self.classifier = nn.Conv2d(256, 2, 1, stride=1, padding=0).cuda()
 
         # update names of the models for optimization
         self.netg_names = {'net_g': 'net_g', 'net_gY': 'net_gY', 'netF': 'netF'}
@@ -58,8 +55,8 @@ class GAN(BaseModel):
 
         # global contrastive
         self.batch = self.hparams.batch_size
-        #self.pool = nn.AdaptiveMaxPool3d(output_size=(1, 1, 1))
-        self.pool = nn.AdaptiveAvgPool3d(output_size=(1, 1, 1))
+        self.pool = nn.AdaptiveMaxPool3d(output_size=(1, 1, 1))
+        #self.pool = nn.AdaptiveAvgPool3d(output_size=(1, 1, 1))
         self.triple = nn.TripletMarginLoss()
         if self.hparams.projection > 0:
             self.center = CenterLoss(feat_dim=self.hparams.projection)
@@ -112,16 +109,13 @@ class GAN(BaseModel):
         else:
             alpha = 0  # if always disconnected
 
-        # generating a mask by sigmoid to locate the lesions, turn out its the best way for now
+        #
         outXz = self.net_g(self.oriX, alpha=1, method='encode')
-        outX = self.net_g(outXz, alpha=1, method='decode')
-        self.imgXY = nn.Sigmoid()(outX['out0'])  # mask 0 - 1
-        self.imgXY = combine(self.imgXY, self.oriX, method='mul')  # i am using masking (0-1) here
+        self.imgXY = self.net_g(outXz, alpha=1, method='decode')
 
         #
         outYz = self.net_g(self.oriY, alpha=alpha, method='encode')
-        outY = self.net_gY(outYz, alpha=alpha, method='decode')
-        self.imgYY = nn.Tanh()(outY['out0'])  # -1 ~ 1, real img
+        self.imgYY = self.net_gY(outYz, alpha=alpha, method='decode')
 
         # global contrastive
         # use last layer
@@ -198,11 +192,6 @@ class GAN(BaseModel):
         loss_dict['loss_t'] = loss_t
         loss_dict['loss_center'] = loss_center
 
-        # classification
-        print(self.outYz.shape)
-        #classify_logits = self.classifier(classify_logits)
-        #classify = self.criterionNCE(classify_logits[:, 1:, :, :], truth_classify.view(-1, 1, 1, 1).type_as(classify_logits))
-
         loss_dict['sum'] = loss_g
 
         return loss_dict
@@ -223,4 +212,4 @@ class GAN(BaseModel):
         return {'sum': loss_d, 'da': loss_da}
 
 
-# python train.py --prj mlp/test/ --models lesion_cutGB --jsn lesion_cut --env t09b --nm 01 --fDown 4 --use_mlp --fWhich 0 0 0 1
+# python train.py --alpha 0 --jsn womac4 --prj global1_cut1/nce4_down4_0011_ngf32_proj32_zcrop16/ --models lesion_global1_cut1 --netG edalphand --split moaks --dataset womac4 --lbvgg 0 --lbNCE 4 --nm 01 --fDown 4 --use_mlp --fWhich 0 0 1 1 -b 2 --ngf 32 --projection 32 --env runpod --n_epochs 200 --lr_policy cosine
