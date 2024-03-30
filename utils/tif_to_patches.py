@@ -78,27 +78,27 @@ def get_average(source, destination):
 
 #root = '/workspace/Data/paired_images/weikunC/'
 
-root = '/media/ExtHDD01/Dataset/paired_images/weikunC/'
-
-if 0:
-    resampling(source=root + 'xyoriX2.tif',
-               destination=root + 'xyzoriX2.tif',
-               size=[700, -1, -1])
-
-    resampling(source=root + 'xyft0X2.tif',
-               destination=root + 'xyzft0X2.tif',
-               size=[700, -1, -1])
+root = '/media/ExtHDD01/Dataset/paired_images/semiA/'
 
 if 1:
-    suffix = 'X2'
+    resampling(source=root + 'xyori.tif',
+               destination=root + 'xyzori.tif',
+               size=[440, -1, -1])
+
+    resampling(source=root + 'xyft0.tif',
+               destination=root + 'xyzft0.tif',
+               size=[440, -1, -1])
+
+if 1:
+    suffix = ''
 
     main(source=['xyzft0' + suffix, 'xyzori' + suffix],
          destination=['zyft0' + suffix, 'zyori' + suffix],
-         dh=(256, 64, 256), step=(256, 64, 256), permute=(1, 0, 2), trds=[5, 2000])
+         dh=(256, 64, 256), step=(256, 64, 256), permute=(1, 0, 2), trds=[5, 20000])
 
     main(source=['xyzft0' + suffix, 'xyzori' + suffix],
          destination=['xyft0' + suffix, 'xyori' + suffix],
-         dh=(64, 256, 256), step=(64, 256, 256), permute=None,  trds=[5, 2000])
+         dh=(64, 256, 256), step=(64, 256, 256), permute=None,  trds=[5, 20000])
 
 
 

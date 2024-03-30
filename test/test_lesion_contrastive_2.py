@@ -118,6 +118,25 @@ def pain_significance_monte_carlo(x0, x1, model, skip=1, nomask=False):
     sig = torch.divide(mean, torch.sqrt(var) + 0.01)
     return mean, var, sig
 
+def plot_style_1():
+    for condition in [0, 1, 2]:
+        le = (lesion >= 0) / 1
+        plt.scatter(e[le == 1, 0], e[le == 1, 1], s=0.05 * np.ones(((le == 1).sum(), 1))[:, 0])
+        for trd in [4, 6, 8]:
+            if condition == 0:
+                le = (lesion >= trd) & (seg > 0) & (pain == P)
+            if condition == 1:
+                le = (lesion >= trd) & (eff == 1) & (pain == P)
+            if condition == 2:
+                le = (lesion >= trd) & (eff == 0) & (seg == 0) & (pain == P)
+            if condition == 3:
+                le = (lesion >= trd)
+
+            plt.scatter(e[le == 1, 0], e[le == 1, 1], s=2 * np.ones(((le == 1).sum(), 1))[:, 0])
+        plt.xlim(0, 1)
+        plt.ylim(0, 1)
+        plt.show()
+
 ###
 # Prepare data and model
 ###
@@ -127,15 +146,14 @@ def pain_significance_monte_carlo(x0, x1, model, skip=1, nomask=False):
 #prj_name = 'mlpb2/ngf24fD2fW0001b4/'
 #prj_name = 'mlp/cutGB2_nce1_1111_ngf16_patch512/'
 #prj_name = 'GB_2b/down2_nce10_0001_ngf32_patch512_crop128/'
-prj_name = 'global1_cut1/nce4_down2_0011_ngf32_proj32_zcrop16/'
+prj_name = 'global1_cut1/nce4_down4_0011_ngf32_proj32_zcrop16_unpaired_moaks/'
 
-
-model, netF, l2norm = get_model(prj_name, epoch=200)
+model, netF, l2norm = get_model(prj_name, epoch=160)
 print([type(x) for x in [model, netF, l2norm]])
 
 nomask = False
 nm11 = False
-fDown = 2  # the
+fDown = 1  # the
 skip = 1
 fWhich = [0, 0, 1, 1]  # which layers of features to use
 
@@ -214,32 +232,15 @@ pain = np.concatenate([np.ones((f0.shape[1])), 2 * np.ones((f1.shape[1]))])
 P = 1
 
 
-def plot_style_1():
-    for condition in [0, 1, 2]:
-        le = (lesion >= 0) / 1
-        plt.scatter(e[le == 1, 0], e[le == 1, 1], s=0.05 * np.ones(((le == 1).sum(), 1))[:, 0])
-        for trd in [4, 6, 8]:
-            if condition == 0:
-                le = (lesion >= trd) & (seg > 0) & (pain == P)
-            if condition == 1:
-                le = (lesion >= trd) & (eff == 1) & (pain == P)
-            if condition == 2:
-                le = (lesion >= trd) & (eff == 0) & (seg == 0) & (pain == P)
-            if condition == 3:
-                le = (lesion >= trd)
-
-            plt.scatter(e[le == 1, 0], e[le == 1, 1], s=2 * np.ones(((le == 1).sum(), 1))[:, 0])
-        plt.xlim(0, 1)
-        plt.ylim(0, 1)
-        plt.show()
-
-
 #plt.figure(figsize=(7, 7))
 trd = 4
+# Is lesion
 le = (lesion >= 0) / 1
 plt.scatter(e[le == 1, 0], e[le == 1, 1], s=1 * np.ones(((le == 1).sum(), 1))[:, 0], alpha=0.2)
+# Is lesion and in Seg
 le = (lesion >= trd) & (seg > 0) & (pain == P)
 plt.scatter(e[le == 1, 0], e[le == 1, 1], s=10 * np.ones(((le == 1).sum(), 1))[:, 0], alpha=0.2)
+# Is lesion and in Eff
 le = (lesion >= trd) & (eff == 1) & (pain == P)
 plt.scatter(e[le == 1, 0], e[le == 1, 1], s=10 * np.ones(((le == 1).sum(), 1))[:, 0], alpha=0.2)
 #le = (lesion >= trd) & (eff == 0) & (seg == 0) & (pain == P)
@@ -293,7 +294,7 @@ for i in range(len(list_img)):
     #tiff.imwrite('output/ori/' + name[i], x0[i, 0, :, :].cpu().numpy())
     #tiff.imwrite('output/seg/' + name[i], seg0[i, :, :])
     tiff.imwrite('output/eff/' + name[i], eff0[i, :, :])
-    tiff.imwrite('output/fmap/' + name[i], fout[i, 0, :, :].numpy())
+    tiff.imwrite('output/fmap/' + name[i], fout[i, 0, :, :].numpy().astype(np.float32))
     tiff.imwrite('output/sig/' + name[i], sig[i, :, :].cpu().numpy())
     tiff.imwrite('output/mean/' + name[i], mean[i, :, :].cpu().numpy())
 
@@ -303,7 +304,7 @@ fout[fout <= 0] = 0
 # sig = torch.from_numpy(tiff.imread('sigold.tif'))
 fout = torch.multiply(fout[:, 0, :, :], sig).numpy()
 
-tiff.imwrite('output/fout.tif', np.concatenate([fout, sig.numpy()], 2))
+tiff.imwrite('output/' + prj_name.split('/')[1] + '.tif', np.concatenate([fout, sig.numpy()], 2))
 
 # pain-no pain comparison
 # plt.scatter(e[:e.shape[0] // 2, 0], e[:e.shape[0] // 2, 1], s=0.05 * np.ones(e.shape[0] // 2))

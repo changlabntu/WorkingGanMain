@@ -17,6 +17,8 @@ from sklearn.neighbors import KNeighborsClassifier
 import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--test', dest='test', type=str)
+parser.add_argument('--mode', type=str, default='dummy')
+parser.add_argument('--port', type=str, default='dummy')
 args = parser.parse_args()
 
 root_path = os.getcwd()
